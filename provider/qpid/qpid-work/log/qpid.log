@@ -1,0 +1,92 @@
+2012-03-29 22:37:42,933 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] BRK-1001 : Startup : Version: 0.14 Build: 1209041
+2012-03-29 22:37:43,031 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] MNG-1001 : Startup
+2012-03-29 22:37:43,056 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] MNG-1002 : Starting : RMI Registry : Listening on port 8999
+2012-03-29 22:37:43,150 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] MNG-1002 : Starting : JMX RMIConnectorServer : Listening on port 9099
+2012-03-29 22:37:43,151 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] MNG-1004 : Ready
+2012-03-29 22:37:43,162 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] VHT-1001 : Created : development
+2012-03-29 22:37:43,221 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: headers Name: amq.match
+2012-03-29 22:37:43,227 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: topic Name: amq.topic
+2012-03-29 22:37:43,229 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: direct Name: amq.direct
+2012-03-29 22:37:43,231 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: fanout Name: amq.fanout
+2012-03-29 22:37:43,237 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: direct Name: <<default>>
+2012-03-29 22:37:43,284 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/development)/qu(queue)] QUE-1001 : Create : Transient
+2012-03-29 22:37:43,333 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/development)/ex(direct/amq.direct)/qu(queue)/rk(queue)] BND-1001 : Create
+2012-03-29 22:37:43,334 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/development)/ex(direct/<<default>>)/qu(queue)/rk(queue)] BND-1001 : Create
+2012-03-29 22:37:43,336 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/development)/qu(ping)] QUE-1001 : Create : Transient
+2012-03-29 22:37:43,352 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/development)/ex(direct/amq.direct)/qu(ping)/rk(ping)] BND-1001 : Create
+2012-03-29 22:37:43,352 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/development)/ex(direct/<<default>>)/qu(ping)/rk(ping)] BND-1001 : Create
+2012-03-29 22:37:43,358 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/development)/ms(MemoryMessageStore)] CFG-1001 : Created : org.apache.qpid.server.store.MemoryMessageStore
+2012-03-29 22:37:43,361 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/development)/ms(MemoryMessageStore)] MST-1001 : Created : org.apache.qpid.server.store.MemoryMessageStore
+2012-03-29 22:37:43,375 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] VHT-1001 : Created : test
+2012-03-29 22:37:43,377 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: headers Name: amq.match
+2012-03-29 22:37:43,381 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: topic Name: amq.topic
+2012-03-29 22:37:43,383 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: direct Name: amq.direct
+2012-03-29 22:37:43,384 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: fanout Name: amq.fanout
+2012-03-29 22:37:43,388 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: direct Name: <<default>>
+2012-03-29 22:37:43,389 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/test)/qu(queue)] QUE-1001 : Create : Transient
+2012-03-29 22:37:43,401 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/test)/ex(direct/amq.direct)/qu(queue)/rk(queue)] BND-1001 : Create
+2012-03-29 22:37:43,402 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/test)/ex(direct/<<default>>)/qu(queue)/rk(queue)] BND-1001 : Create
+2012-03-29 22:37:43,404 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/test)/qu(ping)] QUE-1001 : Create : Transient
+2012-03-29 22:37:43,416 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/test)/ex(direct/amq.direct)/qu(ping)/rk(ping)] BND-1001 : Create
+2012-03-29 22:37:43,417 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/test)/ex(direct/<<default>>)/qu(ping)/rk(ping)] BND-1001 : Create
+2012-03-29 22:37:43,418 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/test)/ms(MemoryMessageStore)] CFG-1001 : Created : org.apache.qpid.server.store.MemoryMessageStore
+2012-03-29 22:37:43,418 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/test)/ms(MemoryMessageStore)] MST-1001 : Created : org.apache.qpid.server.store.MemoryMessageStore
+2012-03-29 22:37:43,421 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] VHT-1001 : Created : localhost
+2012-03-29 22:37:43,423 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: headers Name: amq.match
+2012-03-29 22:37:43,425 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: topic Name: amq.topic
+2012-03-29 22:37:43,426 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: direct Name: amq.direct
+2012-03-29 22:37:43,429 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: fanout Name: amq.fanout
+2012-03-29 22:37:43,431 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: direct Name: <<default>>
+2012-03-29 22:37:43,433 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Durable Type: direct Name: test.direct
+2012-03-29 22:37:43,435 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] EXH-1001 : Create : Type: topic Name: test.topic
+2012-03-29 22:37:43,437 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/qu(test-ping)] QUE-1001 : Create : Transient
+2012-03-29 22:37:43,454 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/ex(direct/test.direct)/qu(test-ping)/rk(test-ping)] BND-1001 : Create
+2012-03-29 22:37:43,455 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/ex(direct/<<default>>)/qu(test-ping)/rk(test-ping)] BND-1001 : Create
+2012-03-29 22:37:43,456 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/qu(queue)] QUE-1001 : Create : Transient
+2012-03-29 22:37:43,464 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/ex(direct/amq.direct)/qu(queue)/rk(queue)] BND-1001 : Create
+2012-03-29 22:37:43,465 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/ex(direct/<<default>>)/qu(queue)/rk(queue)] BND-1001 : Create
+2012-03-29 22:37:43,467 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/qu(test-queue)] QUE-1001 : Create : Durable
+2012-03-29 22:37:43,497 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/ex(direct/test.direct)/qu(test-queue)/rk(test-queue)] BND-1001 : Create
+2012-03-29 22:37:43,498 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/ex(direct/<<default>>)/qu(test-queue)/rk(test-queue)] BND-1001 : Create
+2012-03-29 22:37:43,500 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/qu(ping)] QUE-1001 : Create : Transient
+2012-03-29 22:37:43,527 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/ex(direct/amq.direct)/qu(ping)/rk(ping)] BND-1001 : Create
+2012-03-29 22:37:43,540 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/ex(direct/<<default>>)/qu(ping)/rk(ping)] BND-1001 : Create
+2012-03-29 22:37:43,541 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/ms(MemoryMessageStore)] CFG-1001 : Created : org.apache.qpid.server.store.MemoryMessageStore
+2012-03-29 22:37:43,544 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/ms(MemoryMessageStore)] MST-1001 : Created : org.apache.qpid.server.store.MemoryMessageStore
+2012-03-29 22:37:48,654 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] BRK-1002 : Starting : Listening on TCP port 5672
+2012-03-29 22:37:48,655 INFO  [main] (Log4jMessageLogger.java:72) - [Broker] BRK-1004 : Qpid Broker Ready
+2012-03-29 22:37:52,633 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(/127.0.0.1:38826)] CON-1001 : Open
+2012-03-29 22:37:52,634 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(/127.0.0.1:38826)] CON-1001 : Open : Protocol Version : 0-10
+2012-03-29 22:37:52,635 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(/127.0.0.1:38826)] CON-1001 : Open
+2012-03-29 22:37:52,635 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(/127.0.0.1:38826)] CON-1001 : Open : Protocol Version : 0-10
+2012-03-29 22:37:52,736 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(clientid@/127.0.0.1:38826/test)] CON-1001 : Open : Client ID : clientid : Protocol Version : 0-10
+2012-03-29 22:37:53,055 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(clientid@/127.0.0.1:38826/test)/ch:0] CHN-1001 : Create
+2012-03-29 22:37:53,094 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(clientid@/127.0.0.1:38826/test)/ch:0] [vh(/test)/qu(TempQueueecd6495b-669b-4654-9b17-1f09ec6e65d8)] QUE-1001 : Create : Owner: clientid AutoDelete Transient
+2012-03-29 22:37:53,106 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(clientid@/127.0.0.1:38826/test)/ch:0] [vh(/test)/ex(direct/<<default>>)/qu(TempQueueecd6495b-669b-4654-9b17-1f09ec6e65d8)/rk(TempQueueecd6495b-669b-4654-9b17-1f09ec6e65d8)] BND-1001 : Create
+2012-03-29 22:37:53,120 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(clientid@/127.0.0.1:38826/test)/ch:0] [vh(/test)/ex(topic/amq.topic)/qu(TempQueueecd6495b-669b-4654-9b17-1f09ec6e65d8)/rk(amq.topic)] BND-1001 : Create
+2012-03-29 22:37:53,149 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(clientid@/127.0.0.1:38826/test)/ch:0] [sub:0(vh(/test)/qu(TempQueueecd6495b-669b-4654-9b17-1f09ec6e65d8)] SUB-1001 : Create
+2012-03-29 22:37:55,696 INFO  [IoReceiver - /127.0.0.1:38828] (Log4jMessageLogger.java:72) - [con:1(/127.0.0.1:38828)] CON-1001 : Open
+2012-03-29 22:37:55,696 INFO  [IoReceiver - /127.0.0.1:38828] (Log4jMessageLogger.java:72) - [con:1(/127.0.0.1:38828)] CON-1001 : Open : Protocol Version : 0-10
+2012-03-29 22:37:55,696 INFO  [IoReceiver - /127.0.0.1:38828] (Log4jMessageLogger.java:72) - [con:1(/127.0.0.1:38828)] CON-1001 : Open
+2012-03-29 22:37:55,697 INFO  [IoReceiver - /127.0.0.1:38828] (Log4jMessageLogger.java:72) - [con:1(/127.0.0.1:38828)] CON-1001 : Open : Protocol Version : 0-10
+2012-03-29 22:37:55,776 INFO  [IoReceiver - /127.0.0.1:38828] (Log4jMessageLogger.java:72) - [con:1(clientid@/127.0.0.1:38828/test)] CON-1001 : Open : Client ID : clientid : Protocol Version : 0-10
+2012-03-29 22:37:56,328 INFO  [IoReceiver - /127.0.0.1:38828] (Log4jMessageLogger.java:72) - [con:1(clientid@/127.0.0.1:38828/test)/ch:0] CHN-1001 : Create
+2012-03-29 22:38:07,269 INFO  [IoReceiver - /127.0.0.1:38828] (Log4jMessageLogger.java:72) - [con:1(clientid@/127.0.0.1:38828/test)/ch:0] [con:1(clientid@/127.0.0.1:38828/test)/ch:0] CHN-1003 : Close
+2012-03-29 22:38:07,283 INFO  [IoReceiver - /127.0.0.1:38828] (Log4jMessageLogger.java:72) - [con:1(clientid@/127.0.0.1:38828/test)] [con:1(clientid@/127.0.0.1:38828/test)] CON-1002 : Close
+2012-03-29 22:38:07,284 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(clientid@/127.0.0.1:38826/test)/ch:0] [sub:0(vh(/test)/qu(TempQueueecd6495b-669b-4654-9b17-1f09ec6e65d8)] SUB-1002 : Close
+2012-03-29 22:38:07,298 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(clientid@/127.0.0.1:38826/test)/ch:0] [vh(/test)/ex(direct/<<default>>)/qu(TempQueueecd6495b-669b-4654-9b17-1f09ec6e65d8)/rk(TempQueueecd6495b-669b-4654-9b17-1f09ec6e65d8)] BND-1002 : Deleted
+2012-03-29 22:38:07,300 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(clientid@/127.0.0.1:38826/test)/ch:0] [vh(/test)/ex(topic/amq.topic)/qu(TempQueueecd6495b-669b-4654-9b17-1f09ec6e65d8)/rk(amq.topic)] BND-1002 : Deleted
+2012-03-29 22:38:07,302 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(clientid@/127.0.0.1:38826/test)/ch:0] [vh(/test)/qu(TempQueueecd6495b-669b-4654-9b17-1f09ec6e65d8)] QUE-1002 : Deleted
+2012-03-29 22:38:07,314 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(clientid@/127.0.0.1:38826/test)/ch:0] [con:0(clientid@/127.0.0.1:38826/test)/ch:0] CHN-1003 : Close
+2012-03-29 22:38:07,322 INFO  [IoReceiver - /127.0.0.1:38826] (Log4jMessageLogger.java:72) - [con:0(clientid@/127.0.0.1:38826/test)] [con:0(clientid@/127.0.0.1:38826/test)] CON-1002 : Close
+2012-03-29 22:38:08,082 INFO  [Thread-0] (Log4jMessageLogger.java:72) - [Broker] BRK-1003 : Shuting down : TCP port 5672
+2012-03-29 22:38:08,085 INFO  [Thread-0] (Log4jMessageLogger.java:72) - [Broker] [vh(/localhost)/ms(MemoryMessageStore)] MST-1003 : Closed
+2012-03-29 22:38:08,093 INFO  [Thread-0] (Log4jMessageLogger.java:72) - [Broker] VHT-1002 : Closed
+2012-03-29 22:38:08,095 INFO  [Thread-0] (Log4jMessageLogger.java:72) - [Broker] [vh(/test)/ms(MemoryMessageStore)] MST-1003 : Closed
+2012-03-29 22:38:08,098 INFO  [Thread-0] (Log4jMessageLogger.java:72) - [Broker] VHT-1002 : Closed
+2012-03-29 22:38:08,099 INFO  [Thread-0] (Log4jMessageLogger.java:72) - [Broker] [vh(/development)/ms(MemoryMessageStore)] MST-1003 : Closed
+2012-03-29 22:38:08,100 INFO  [Thread-0] (Log4jMessageLogger.java:72) - [Broker] VHT-1002 : Closed
+2012-03-29 22:38:08,101 INFO  [Thread-0] (Log4jMessageLogger.java:72) - [Broker] MNG-1003 : Shutting down : JMX RMIConnectorServer : port 9099
+2012-03-29 22:38:08,106 INFO  [Thread-0] (Log4jMessageLogger.java:72) - [Broker] MNG-1003 : Shutting down : RMI Registry : port 8999
+2012-03-29 22:38:08,119 INFO  [Thread-0] (Log4jMessageLogger.java:72) - [Broker] MNG-1005 : Stopped
+2012-03-29 22:38:08,147 INFO  [Thread-0] (Log4jMessageLogger.java:72) - [Broker] BRK-1005 : Stopped

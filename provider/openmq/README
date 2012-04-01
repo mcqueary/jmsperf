@@ -1,0 +1,2 @@
+To add a ConnectionFactory (called ConnectionFactory):
+imqobjmgr add -t cf -l ConnectionFactory -j "java.naming.factory.initial=com.sun.jndi.fscontext.RefFSContextFactory" -j "java.naming.provider.url=file:/tmp"
