@@ -60,7 +60,7 @@ public class jmsMsgProducerPerf
     private int count = 10000;
     private int runTime = 0;
     private int minMsgSize = 0;
-    private int msgSize = 0;
+    private int maxMsgSize = 0;
     private int threads = 1;
     private int deliveryMode = DeliveryMode.NON_PERSISTENT;
     private StringBuffer msgBuffer = null;
@@ -117,11 +117,11 @@ public class jmsMsgProducerPerf
             if (useRandomSize)
             {
                 System.err.println("Min Message Size............. " + minMsgSize);            	
-                System.err.println("Max Message Size............. " + (payloadFile != null ? payloadFile : String.valueOf(msgSize)));
+                System.err.println("Max Message Size............. " + (payloadFile != null ? payloadFile : String.valueOf(maxMsgSize)));
             }
             else
             {
-            	System.err.println("Message Size................. " + (payloadFile != null ? payloadFile : String.valueOf(msgSize)));
+            	System.err.println("Message Size................. " + (payloadFile != null ? payloadFile : String.valueOf(maxMsgSize)));
             }
             if (count > 0)
                 System.err.println("Count........................ " + count);
@@ -283,7 +283,7 @@ public class jmsMsgProducerPerf
                 {
                 	if (rand==null)
                     	rand = new Random();
-                	randomSize = rand.nextInt(msgSize - minMsgSize + 1) + minMsgSize;
+                	randomSize = rand.nextInt(maxMsgSize - minMsgSize + 1) + minMsgSize;
                 	//System.out.println("Generating message body of size " + randomSize + " bytes.");
                 	msg.clearBody();
                 	try {
@@ -339,10 +339,10 @@ public class jmsMsgProducerPerf
     private Message createMessage(Session session) throws JMSException
     {
         String payload = null;
-        
+        int bufferSize = 0;
         // create the message
         BytesMessage msg = session.createBytesMessage();
-
+        
         // add the payload
         if (payloadFile != null)
         {
@@ -350,21 +350,40 @@ public class jmsMsgProducerPerf
             {
                 InputStream instream = 
                     new BufferedInputStream(new FileInputStream(payloadFile));
-                int size = instream.available();
-                byte[] bytesRead = new byte[size];
+                bufferSize = instream.available();
+                byte[] bytesRead = new byte[bufferSize];
                 instream.read(bytesRead);
                 payload = new String(bytesRead);
+
+                if (minMsgSize > bufferSize)
+                {
+                	System.err.println("Payload file size (" + bufferSize + ") < minimum msg size (" 
+                			+ maxMsgSize + ")");
+                	System.err.println("Exiting."); 
+                	System.exit(-1);
+                }
+                
+                if (maxMsgSize > bufferSize)
+                {
+                	System.err.println("Payload file size (" + bufferSize + ") < maximum msg size (" 
+                			+ maxMsgSize + "). Setting maximum msg size to " + bufferSize);
+                	maxMsgSize = bufferSize;
+                }
+
             }
             catch(IOException e)
             {
                 System.err.println("Error: unable to load payload file - " + e.getMessage());
             }
+            
         }
-        else if (msgSize > 0)
+        
+        
+        if (maxMsgSize > 0)
         {
-            msgBuffer = new StringBuffer(msgSize);
+            msgBuffer = new StringBuffer(maxMsgSize);
             char c = 'A';
-            for (int i = 0; i < msgSize; i++)
+            for (int i = 0; i < maxMsgSize; i++)
             {
                 msgBuffer.append(c++);
                 if (c > 'z')
@@ -487,31 +506,31 @@ public class jmsMsgProducerPerf
 
     void initParams()
     {
-        debug = Boolean.parseBoolean(props.getProperty(DEBUG, "false"));
-        flavor = Flavor.valueOf(props.getProperty(PROVIDER_FLAVOR));
-        connections = Integer.parseInt(props.getProperty(PRODUCER_CONNECTIONS, "1"));
-        threads = Integer.parseInt(props.getProperty(PRODUCER_THREADS, "1"));
-        jndiProviderURL = props.getProperty(PROVIDER_JNDI, null);
-        username = props.getProperty(USERNAME, null);
-        password = props.getProperty(PASSWORD, null);
-        destType = props.getProperty(DESTINATION_TYPE, "topic");
-        destName = props.getProperty(DESTINATION_NAME, "topic.sample");
-        factoryName = props.getProperty(FACTORY, null);
-        uniqueDests = Boolean.parseBoolean(props.getProperty(UNIQUE_DESTS, "false"));
-        xa = Boolean.parseBoolean(props.getProperty(USE_XA, "false"));
+        debug = Boolean.parseBoolean(props.getProperty(OPT_DEBUG, "false"));
+        flavor = Flavor.valueOf(props.getProperty(OPT_PROVIDER_FLAVOR));
+        connections = Integer.parseInt(props.getProperty(OPT_PRODUCER_CONNECTIONS, "1"));
+        threads = Integer.parseInt(props.getProperty(OPT_PRODUCER_THREADS, "1"));
+        jndiProviderURL = props.getProperty(OPT_PROVIDER_JNDI, null);
+        username = props.getProperty(OPT_USERNAME, null);
+        password = props.getProperty(OPT_PASSWORD, null);
+        destType = props.getProperty(OPT_DESTINATION_TYPE, "topic");
+        destName = props.getProperty(OPT_DESTINATION_NAME, "topic.sample");
+        factoryName = props.getProperty(OPT_FACTORY, null);
+        uniqueDests = Boolean.parseBoolean(props.getProperty(OPT_UNIQUE_DESTS, "false"));
+        xa = Boolean.parseBoolean(props.getProperty(OPT_USE_XA, "false"));
     	
     	
-        payloadFile = props.getProperty(PRODUCER_PAYLOAD_FILE, null);
-        compression = Boolean.parseBoolean(props.getProperty(COMPRESSION, "false"));
-        msgRate = Integer.parseInt(props.getProperty(PRODUCER_MESSAGE_RATE, "0"));
-        txnSize = Integer.parseInt(props.getProperty(TXNSIZE, "0"));
-        count = Integer.parseInt(props.getProperty(COUNT, "10000"));
-        runTime = Integer.parseInt(props.getProperty(DURATION, "0"));
-        minMsgSize = Integer.parseInt(props.getProperty(PRODUCER_PAYLOAD_MINSIZE, "0"));
-        msgSize = Integer.parseInt(props.getProperty(PRODUCER_PAYLOAD_MAXSIZE, "0"));
-        if (minMsgSize < msgSize)
+        payloadFile = props.getProperty(OPT_PRODUCER_PAYLOAD_FILE, null);
+        compression = Boolean.parseBoolean(props.getProperty(OPT_COMPRESSION, "false"));
+        msgRate = Integer.parseInt(props.getProperty(OPT_PRODUCER_MESSAGE_RATE, "0"));
+        txnSize = Integer.parseInt(props.getProperty(OPT_TXNSIZE, "0"));
+        count = Integer.parseInt(props.getProperty(OPT_COUNT, "10000"));
+        runTime = Integer.parseInt(props.getProperty(OPT_DURATION, "0"));
+        minMsgSize = Integer.parseInt(props.getProperty(OPT_PRODUCER_PAYLOAD_MINSIZE, "0"));
+        maxMsgSize = Integer.parseInt(props.getProperty(OPT_PRODUCER_PAYLOAD_MAXSIZE, "0"));
+        if (minMsgSize < maxMsgSize)
         	useRandomSize = true;
-        String deliveryModeString = props.getProperty(PRODUCER_DELIVERY_MODE,
+        String deliveryModeString = props.getProperty(OPT_PRODUCER_DELIVERY_MODE,
         		"NON_PERSISTENT");
         deliveryMode = deliveryModeNum(deliveryModeString);
     }
@@ -659,7 +678,7 @@ public class jmsMsgProducerPerf
                 }
                 try 
                 {
-                    msgSize = Integer.parseInt(args[i+1]);
+                    maxMsgSize = Integer.parseInt(args[i+1]);
                 }
                 catch(NumberFormatException e) 
                 {

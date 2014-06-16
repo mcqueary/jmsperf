@@ -645,14 +645,14 @@ public class jmsMsgConsumerPerf
     }
     void initParams()
     {        
-        debug = Boolean.parseBoolean(props.getProperty(DEBUG, "false"));
-    	flavor = Flavor.valueOf(props.getProperty(PROVIDER_FLAVOR));
-        selector = props.getProperty(CONSUMER_SELECTOR, null);
-        txnSize = Integer.parseInt(props.getProperty(TXNSIZE, "0"));
-        count = Integer.parseInt(props.getProperty(COUNT, "10000"));
-        runTime = Integer.parseInt(props.getProperty(DURATION, "0"));
-        threads = Integer.parseInt(props.getProperty(CONSUMER_THREADS, "1"));
-        String ackModeString = props.getProperty(CONSUMER_ACK_MODE, "AUTO_ACKNOWLEDGE");
+        debug = Boolean.parseBoolean(props.getProperty(OPT_DEBUG, "false"));
+    	flavor = Flavor.valueOf(props.getProperty(OPT_PROVIDER_FLAVOR));
+        selector = props.getProperty(OPT_CONSUMER_SELECTOR, null);
+        txnSize = Integer.parseInt(props.getProperty(OPT_TXNSIZE, "0"));
+        count = Integer.parseInt(props.getProperty(OPT_COUNT, "10000"));
+        runTime = Integer.parseInt(props.getProperty(OPT_DURATION, "0"));
+        threads = Integer.parseInt(props.getProperty(OPT_CONSUMER_THREADS, "1"));
+        String ackModeString = props.getProperty(OPT_CONSUMER_ACK_MODE, "AUTO_ACKNOWLEDGE");
         
         if (ackModeString.compareToIgnoreCase("AUTO_ACKNOWLEDGE")==0)
         	ackMode = Session.AUTO_ACKNOWLEDGE;
@@ -670,16 +670,16 @@ public class jmsMsgConsumerPerf
         		ackMode = jmsProviderSpecifics.TIBCO_NO_ACKNOWLEDGE;
         }
         
-        connections = Integer.parseInt(props.getProperty(CONSUMER_CONNECTIONS, "1"));
-        jndiProviderURL = props.getProperty(PROVIDER_JNDI, null);
-        username = props.getProperty(USERNAME, null);
-        password = props.getProperty(PASSWORD, null);
-        durableName = props.getProperty(CONSUMER_DURABLE_NAME, null);
-        destType = props.getProperty(DESTINATION_TYPE, "topic");
-        destName = props.getProperty(DESTINATION_NAME, "topic.sample");
-        factoryName = props.getProperty(FACTORY, null);
-        uniqueDests = Boolean.parseBoolean(props.getProperty(UNIQUE_DESTS, "false"));
-        xa = Boolean.parseBoolean(props.getProperty(USE_XA, "false"));
+        connections = Integer.parseInt(props.getProperty(OPT_CONSUMER_CONNECTIONS, "1"));
+        jndiProviderURL = props.getProperty(OPT_PROVIDER_JNDI, null);
+        username = props.getProperty(OPT_USERNAME, null);
+        password = props.getProperty(OPT_PASSWORD, null);
+        durableName = props.getProperty(OPT_CONSUMER_DURABLE_NAME, null);
+        destType = props.getProperty(OPT_DESTINATION_TYPE, "topic");
+        destName = props.getProperty(OPT_DESTINATION_NAME, "topic.sample");
+        factoryName = props.getProperty(OPT_FACTORY, null);
+        uniqueDests = Boolean.parseBoolean(props.getProperty(OPT_UNIQUE_DESTS, "false"));
+        xa = Boolean.parseBoolean(props.getProperty(OPT_USE_XA, "false"));
     }
     /**
      * main

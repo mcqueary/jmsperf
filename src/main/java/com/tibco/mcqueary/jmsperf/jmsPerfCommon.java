@@ -44,39 +44,39 @@ public class jmsPerfCommon
     protected static String DESTTYPE_TOPIC = "topic";
     protected static String DESTTYPE_QUEUE = "queue";
     
-    protected static String PROVIDER_FLAVOR = "flavor";
-    public static String PROVIDER_JNDI = "java.naming.provider.url";
-    public static String PROVIDER_ICF = "java.naming.factory.initial";
-    protected static String USERNAME = "java.naming.security.principal";
-    protected static String PASSWORD = "java.naming.security.credentials";
+    protected static String OPT_PROVIDER_FLAVOR = "flavor";
+    public static String OPT_PROVIDER_JNDI = "java.naming.provider.url";
+    public static String OPT_PROVIDER_ICF = "java.naming.factory.initial";
+    protected static String OPT_USERNAME = "java.naming.security.principal";
+    protected static String OPT_PASSWORD = "java.naming.security.credentials";
 
-    protected static String FACTORY = "factory";
-    protected static String DESTINATION_TYPE = "destination.type";
-    protected static String DESTINATION_NAME = "destination.name";
-    protected static String COUNT = "count";
-    protected static String DURATION = "duration";
+    protected static String OPT_FACTORY = "factory";
+    protected static String OPT_DESTINATION_TYPE = "destination.type";
+    protected static String OPT_DESTINATION_NAME = "destination.name";
+    protected static String OPT_COUNT = "count";
+    protected static String OPT_DURATION = "duration";
     
-    protected static String COMPRESSION = "compression";
-    protected static String UNIQUE_DESTS = "uniquedests";
-    protected static String USE_XA = "use_xa";
-    protected static String TXNSIZE = "txnsize";
+    protected static String OPT_COMPRESSION = "compression";
+    protected static String OPT_UNIQUE_DESTS = "uniquedests";
+    protected static String OPT_USE_XA = "use_xa";
+    protected static String OPT_TXNSIZE = "txnsize";
 
-    protected static String DEBUG = "debug";
+    protected static String OPT_DEBUG = "debug";
 
     // Consumer options
-    protected static String CONSUMER_THREADS = "consumer.threads";
-    protected static String CONSUMER_CONNECTIONS = "consumer.connections";
-    protected static String CONSUMER_DURABLE_NAME = "consumer.durable.name";
-    protected static String CONSUMER_ACK_MODE = "consumer.ackmode";
-    protected static String CONSUMER_SELECTOR = "consumer.selector";
+    protected static String OPT_CONSUMER_THREADS = "consumer.threads";
+    protected static String OPT_CONSUMER_CONNECTIONS = "consumer.connections";
+    protected static String OPT_CONSUMER_DURABLE_NAME = "consumer.durable.name";
+    protected static String OPT_CONSUMER_ACK_MODE = "consumer.ackmode";
+    protected static String OPT_CONSUMER_SELECTOR = "consumer.selector";
     // Producer options
-    protected static String PRODUCER_THREADS = "producer.threads";
-    protected static String PRODUCER_CONNECTIONS = "producer.connections";
-    protected static String PRODUCER_PAYLOAD_FILE = "producer.payload.file";
-    protected static String PRODUCER_PAYLOAD_MINSIZE = "producer.payload.minsize";
-    protected static String PRODUCER_PAYLOAD_MAXSIZE = "producer.payload.maxsize";
-    protected static String PRODUCER_DELIVERY_MODE = "producer.delivery_mode";
-    protected static String PRODUCER_MESSAGE_RATE = "producer.rate";
+    protected static String OPT_PRODUCER_THREADS = "producer.threads";
+    protected static String OPT_PRODUCER_CONNECTIONS = "producer.connections";
+    protected static String OPT_PRODUCER_PAYLOAD_FILE = "producer.payload.file";
+    protected static String OPT_PRODUCER_PAYLOAD_MINSIZE = "producer.payload.minsize";
+    protected static String OPT_PRODUCER_PAYLOAD_MAXSIZE = "producer.payload.maxsize";
+    protected static String OPT_PRODUCER_DELIVERY_MODE = "producer.delivery_mode";
+    protected static String OPT_PRODUCER_MESSAGE_RATE = "producer.rate";
     
 
     protected static enum Flavor { TIBEMS, WMQ, HORNETQ, SWIFTMQ, ACTIVEMQ, QPID, OPENMQ };
