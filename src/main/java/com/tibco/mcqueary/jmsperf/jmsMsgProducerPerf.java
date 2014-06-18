@@ -146,7 +146,7 @@ public class jmsMsgProducerPerf
                 createXAConnectionFactoryAndXAConnections();
 
             // create the producer threads
-            Vector tv = new Vector(threads);
+            Vector<Thread> tv = new Vector<Thread>(threads);
             for (int i=0;i<threads;i++)
             {
                 Thread t = new Thread(this);
@@ -224,7 +224,7 @@ public class jmsMsgProducerPerf
             Destination         destination = null;
             Session             session     = null;
             XAResource          xaResource  = null;
-            tibjmsPerfTxnHelper txnHelper   = getPerfTxnHelper(xa);
+            jmsPerfTxnHelper txnHelper   = getPerfTxnHelper(xa);
 
             if (!xa)
             {
@@ -353,8 +353,10 @@ public class jmsMsgProducerPerf
                 bufferSize = instream.available();
                 byte[] bytesRead = new byte[bufferSize];
                 instream.read(bytesRead);
-                payload = new String(bytesRead);
+                instream.close();
 
+                payload = new String(bytesRead);
+                
                 if (minMsgSize > bufferSize)
                 {
                 	System.err.println("Payload file size (" + bufferSize + ") < minimum msg size (" 
@@ -759,10 +761,6 @@ public class jmsMsgProducerPerf
             else if (args[i].compareTo("-help")==0)
             {
                 usage();
-            }
-            else if (args[i].compareTo("-help-ssl")==0)
-            {
-                jmsUtilities.sslUsage();
             }
             else
             {

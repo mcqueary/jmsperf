@@ -1,7 +1,7 @@
 package com.tibco.mcqueary.jmsperf;
 
 /* 
- * Copyright (c) 2001-$Date: 2009-09-11 14:08:04 -0700 (Fri, 11 Sep 2009) $ TIBCO Software Inc. 
+ * Copyright (c) 2001-2014 TIBCO Software Inc. 
  * All rights reserved.
  * For more information, please contact:
  * TIBCO Software Inc., Palo Alto, California, USA
@@ -20,7 +20,7 @@ import javax.transaction.xa.*;
 public class jmsPerfCommon
 {
     protected int    connections = 1;
-    protected Vector connsVector;
+    protected Vector<Connection> connsVector;
     
     protected String jndiProviderURL = null;
     protected String username = null;
@@ -45,10 +45,10 @@ public class jmsPerfCommon
     protected static String DESTTYPE_QUEUE = "queue";
     
     protected static String OPT_PROVIDER_FLAVOR = "flavor";
-    public static String OPT_PROVIDER_JNDI = "java.naming.provider.url";
-    public static String OPT_PROVIDER_ICF = "java.naming.factory.initial";
-    protected static String OPT_USERNAME = "java.naming.security.principal";
-    protected static String OPT_PASSWORD = "java.naming.security.credentials";
+    public static String OPT_PROVIDER_JNDI = Context.PROVIDER_URL;
+    public static String OPT_PROVIDER_ICF = Context.INITIAL_CONTEXT_FACTORY;
+    protected static String OPT_USERNAME = Context.SECURITY_PRINCIPAL;
+    protected static String OPT_PASSWORD = Context.SECURITY_CREDENTIALS;
 
     protected static String OPT_FACTORY = "factory";
     protected static String OPT_DESTINATION_TYPE = "destination.type";
@@ -79,7 +79,7 @@ public class jmsPerfCommon
     protected static String OPT_PRODUCER_MESSAGE_RATE = "producer.rate";
     
 
-    protected static enum Flavor { TIBEMS, WMQ, HORNETQ, SWIFTMQ, ACTIVEMQ, QPID, OPENMQ };
+    protected static enum Flavor { TIBEMS, KAAZING, WMQ, HORNETQ, SWIFTMQ, ACTIVEMQ, QPID, OPENMQ };
     protected static Flavor flavor;
     
     public jmsPerfCommon() {}
@@ -102,7 +102,7 @@ public class jmsPerfCommon
     	}
         if (debug)
         {
-	        Enumeration e = props.propertyNames();
+	        Enumeration<?> e = props.propertyNames();
 	        while (e.hasMoreElements()) {
 	          String key = (String) e.nextElement();
 	          System.out.println(key + " -- " + props.getProperty(key));
@@ -188,13 +188,9 @@ public class jmsPerfCommon
         	jmsUtilities.initJNDI(props);
             factory = (ConnectionFactory) jmsUtilities.lookup(factoryName);
         }
-//        else 
-//        {
-//            factory = new com.tibco.tibjms.TibjmsConnectionFactory(jndiProviderURL);
-//        }
         
         // create the connections
-        connsVector = new Vector(connections);
+        connsVector = new Vector<Connection>(connections);
         for (int i=0;i<connections;i++)
         {
             Connection conn = factory.createConnection(username, password);
@@ -213,13 +209,9 @@ public class jmsPerfCommon
             jmsUtilities.initJNDI(props);
             factory = (XAConnectionFactory) jmsUtilities.lookup(factoryName);
         }
-//        else 
-//        {
-//            factory = new com.tibco.tibjms.TibjmsXAConnectionFactory(jndiProviderURL);
-//        }
         
         // create the connections
-        connsVector = new Vector(connections);
+        connsVector = new Vector<Connection>(connections);
         for (int i=0;i<connections;i++)
         {
             XAConnection conn = factory.createXAConnection(username,password);
@@ -305,9 +297,9 @@ public class jmsPerfCommon
      * Returns a txn helper object for beginning/commiting transaction
      * synchronized because of multiple prod/cons threads
      */
-    public synchronized tibjmsPerfTxnHelper getPerfTxnHelper(boolean xa)
+    public synchronized jmsPerfTxnHelper getPerfTxnHelper(boolean xa)
     {
-        return new tibjmsPerfTxnHelper(xa);
+        return new jmsPerfTxnHelper(xa);
     }
     
     /**
@@ -315,13 +307,13 @@ public class jmsPerfCommon
      * any requried state. Each prod/cons thread needs to get an instance of 
      * this by calling getPerfTxnHelper().
      */
-    public class tibjmsPerfTxnHelper
+    public class jmsPerfTxnHelper
     {
         public boolean startNewXATxn = true;
         public Xid     xid = null;
         public boolean xa = false;
 
-        public tibjmsPerfTxnHelper(boolean xa) { 
+        public jmsPerfTxnHelper(boolean xa) { 
             this.xa = xa;
         }
 

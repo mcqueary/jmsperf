@@ -125,7 +125,7 @@ public class jmsMsgConsumerPerf
                 createXAConnectionFactoryAndXAConnections();
             
             // create the consumer threads
-            Vector tv = new Vector(threads);
+            Vector<Thread> tv = new Vector<Thread>(threads);
             for (int i=0;i<threads;i++)
             {
                 Thread t = new Thread(this);
@@ -133,7 +133,7 @@ public class jmsMsgConsumerPerf
                 t.start();
             }
 
-            // run for the specified amout of time
+            // run for the specified amount of time
             if (runTime > 0)
             {
                 try 
@@ -197,7 +197,7 @@ public class jmsMsgConsumerPerf
         int                 msgCount         = 0;
         Destination         destination      = null;
         XAResource          xaResource       = null;
-        tibjmsPerfTxnHelper txnHelper        = getPerfTxnHelper(xa);
+        jmsPerfTxnHelper txnHelper        = getPerfTxnHelper(xa);
 
         try 
         {
@@ -241,7 +241,7 @@ public class jmsMsgConsumerPerf
 //            if (com.tibco.tibjms.Tibjms.isConsumerMulticast(msgConsumer))
 //                com.tibco.tibjms.Tibjms.setMulticastExceptionListener(this);
 
-            boolean startNewXATxn = true;
+//            boolean startNewXATxn = true;
 
             // receive messages
             while ((count == 0 || msgCount < (count/threads)) && !stopNow)
@@ -455,10 +455,6 @@ public class jmsMsgConsumerPerf
                 username = args[i+1];
                 i += 2;
             }
-            else if (args[i].compareTo("-help-ssl")==0)
-            {
-                jmsUtilities.sslUsage();
-            }
             else if (args[i].compareTo("-password")==0)
             {
                 if ((i+1) >= args.length) usage();
@@ -628,7 +624,7 @@ public class jmsMsgConsumerPerf
     }
 
     /**
-     * Multicast exception listener
+     * Multicast exception listener - TIBCO only
      */
     public void onMulticastException(Connection connection, Session session,
                                      MessageConsumer consumer, JMSException ex)

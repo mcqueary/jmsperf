@@ -7,8 +7,10 @@ export PROPERTIES=provider/$FLAVOR/${FLAVOR}.properties
 export WMQ_HOME=/opt/mqm
 export WMQ_CLASSPATH="${WMQ_HOME}/java/lib/*"
 
-export TIBEMS_HOME=/opt/tibco/ems/6.3
-export TIBEMS_CLASSPATH="${TIBEMS_HOME}/lib/*"
+if [ -z "$TIBEMS_ROOT" ]; then
+  export TIBEMS_ROOT=/Users/larry/tibco/ems/7.0
+fi
+export TIBEMS_CLASSPATH=`echo $TIBEMS_ROOT/lib/*.jar | tr " " ":"`
 
 
 usage ()
@@ -33,9 +35,9 @@ elif [ ! -r $PROPERTIES ]; then
 fi
 
 if [ $FLAVOR = "tibems" ]; then
-  export CLASSPATH=jmsperf.jar:${TIBEMS_CLASSPATH}
+  export CLASSPATH=target/classes:${TIBEMS_CLASSPATH}
 else
-  export CLASSPATH=jmsperf.jar:${WMQ_CLASSPATH}
+  export CLASSPATH=target/classes:${WMQ_CLASSPATH}
 fi
 
 java -cp $CLASSPATH $TARGETCLASS -propFile $PROPERTIES
