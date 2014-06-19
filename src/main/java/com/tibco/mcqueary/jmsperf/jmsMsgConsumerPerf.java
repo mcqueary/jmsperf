@@ -41,6 +41,9 @@ package com.tibco.mcqueary.jmsperf;
  *   -xa                         Use XA transactions.
  */
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryUsage;
 import java.util.*;
 
 import javax.jms.*;
@@ -90,7 +93,8 @@ public class jmsMsgConsumerPerf
     	parseArgs(args);
 
         jmsUtilities.initJNDI(props);
-        
+        MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
+
         try {
             jmsUtilities.initSSLParams(jndiProviderURL,args);
 
@@ -175,7 +179,15 @@ public class jmsMsgConsumerPerf
         catch (JMSException e)
         {
             e.printStackTrace();
-        }
+        } catch (OutOfMemoryError e)
+    	{
+            MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
+            long maxMemory = heapUsage.getMax() / MEGABYTE;
+            long usedMemory = heapUsage.getUsed() / MEGABYTE;
+            System.out.println(connsVector.size() + " connections : Memory Use :" + usedMemory + "M/" + maxMemory + "M");
+            System.out.println();
+            e.printStackTrace();
+    	}
     }
 
     /**
@@ -680,8 +692,9 @@ public class jmsMsgConsumerPerf
     /**
      * main
      */
+	private static final int MEGABYTE = (1024*1024);
     public static void main(String[] args)
-    {
+    {    	
         jmsMsgConsumerPerf t = new jmsMsgConsumerPerf(args);
     }
 }

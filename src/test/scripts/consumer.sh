@@ -1,10 +1,12 @@
 #!/bin/sh
 
-export JVM_OPTS="-Xms1024m -Xmx2048m"
+export JVM_OPTS="-Xms512m -Xmx512m -Xss256k"
 
 JAR=target/jmsperf-0.0.1-SNAPSHOT.jar
 
-export TIBCO_HOME=/Users/larry/tibco
+if [ -z "$TIBCO_HOME" ]; then
+  export TIBCO_HOME=/Users/larry/tibco
+fi
 
 export TARGETCLASS=com.tibco.mcqueary.jmsperf.jmsMsgConsumerPerf
 export FLAVOR=tibems
@@ -23,7 +25,7 @@ if [ -f  ${KAAZING_LIBDIR}/geronimo-jms_1.1_spec-1.1.1.jar ]; then
 fi
 
 if [ -z "$TIBEMS_ROOT" ]; then
-  export TIBEMS_HOME=/Users/larry/tibco/ems/6.3
+  export TIBEMS_ROOT=/Users/larry/tibco/ems/6.3
 fi
 if [ -f $TIBEMS_ROOT/lib/tibjms.jar ]; then
   export TIBEMS_JARS=`echo ${TIBEMS_ROOT}/lib/*.jar | tr " " ":"`
