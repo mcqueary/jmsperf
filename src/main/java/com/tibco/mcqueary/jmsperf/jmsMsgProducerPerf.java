@@ -261,7 +261,7 @@ public class jmsMsgProducerPerf
             // create the message
             Message msg = createMessage(session);
 
-            // enable compression if ncessary
+            // enable compression if necessary
             if (compression)
                 msg.setBooleanProperty("JMS_TIBCO_COMPRESS", true); 
 
@@ -517,6 +517,11 @@ public class jmsMsgProducerPerf
         password = props.getProperty(OPT_PASSWORD, null);
         destType = props.getProperty(OPT_DESTINATION_TYPE, "topic");
         destName = props.getProperty(OPT_DESTINATION_NAME, "topic.sample");
+        if (destType.equalsIgnoreCase("topic")) {
+        	destNameFormat = props.getProperty(jmsPerfCommon.OPT_DEST_NAME_FORMAT_TOPIC, "%s");        	
+        }
+        else
+        	destNameFormat = props.getProperty(jmsPerfCommon.OPT_DEST_NAME_FORMAT_QUEUE, "%s");
         factoryName = props.getProperty(OPT_FACTORY, null);
         uniqueDests = Boolean.parseBoolean(props.getProperty(OPT_UNIQUE_DESTS, "false"));
         xa = Boolean.parseBoolean(props.getProperty(OPT_USE_XA, "false"));

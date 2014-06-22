@@ -68,7 +68,7 @@ public class jmsMsgConsumerPerf
     private long startTime;
     private long endTime;
     private long elapsed;
-    private boolean stopNow;
+    private boolean stopNow=false;
 
     /**
      * Constructor
@@ -184,7 +184,8 @@ public class jmsMsgConsumerPerf
             MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
             long maxMemory = heapUsage.getMax() / MEGABYTE;
             long usedMemory = heapUsage.getUsed() / MEGABYTE;
-            System.out.println(connsVector.size() + " connections : Memory Use :" + usedMemory + "M/" + maxMemory + "M");
+            System.out.println("\n\n("+connsVector.size() + " connections : Memory Use :" + usedMemory 
+            		+ "M/" + maxMemory + "M)");
             System.out.println();
             e.printStackTrace();
     	}
@@ -272,7 +273,7 @@ public class jmsMsgConsumerPerf
 
                 // acknowledge the message if necessary
 
-                if ((flavor != null) && (flavor == Flavor.TIBEMS))
+                if (flavor == Flavor.TIBEMS)
                 {
                 	if ((ackMode == jmsProviderSpecifics.TIBCO_EXPLICIT_CLIENT_ACKNOWLEDGE) ||
                     (ackMode == jmsProviderSpecifics.TIBCO_EXPLICIT_CLIENT_DUPS_OK_ACKNOWLEDGE))
@@ -287,7 +288,7 @@ public class jmsMsgConsumerPerf
                 if (txnSize > 0 && msgCount % txnSize == 0)
                     txnHelper.commitTx(xaResource, session);
                 
-                if ((flavor != null) && (flavor == Flavor.TIBEMS))
+                if (flavor == Flavor.TIBEMS)
                 {
 	                // force the uncompression of compressed messages
 	                if (msg.getBooleanProperty("JMS_TIBCO_COMPRESS"))
@@ -685,7 +686,11 @@ public class jmsMsgConsumerPerf
         durableName = props.getProperty(OPT_CONSUMER_DURABLE_NAME, null);
         destType = props.getProperty(OPT_DESTINATION_TYPE, "topic");
         destName = props.getProperty(OPT_DESTINATION_NAME, "topic.sample");
-        factoryName = props.getProperty(OPT_FACTORY, null);
+        if (destType.equalsIgnoreCase("topic"))
+        	destNameFormat = props.getProperty(OPT_DEST_NAME_FORMAT_TOPIC, "%s");
+        else
+        	destNameFormat = props.getProperty(OPT_DEST_NAME_FORMAT_QUEUE, "%s");
+        factoryName = props.getProperty(OPT_FACTORY, "ConnectionFactory");
         uniqueDests = Boolean.parseBoolean(props.getProperty(OPT_UNIQUE_DESTS, "false"));
         xa = Boolean.parseBoolean(props.getProperty(OPT_USE_XA, "false"));
     }
