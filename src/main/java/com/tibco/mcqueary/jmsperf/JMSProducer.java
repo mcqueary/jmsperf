@@ -28,7 +28,7 @@ package com.tibco.mcqueary.jmsperf;
  *   -topic        <topic-name>  Topic name. Default is "topic.sample".
  *   -queue        <queue-name>  Queue name. No default.
  *   -size         <num bytes>   Message payload size in bytes. Default is 100.
- *   -count        <num msgs>    Number of messages to send. Default is 10k.
+ *   -msgGoal        <num msgs>    Number of messages to send. Default is 10k.
  *   -time         <seconds>     Number of seconds to run. Default is 0 (forever).
  *   -delivery     <mode>        Delivery mode. Default is NON_PERSISTENT.
  *                               Other values: PERSISTENT and RELIABLE.
@@ -45,6 +45,7 @@ package com.tibco.mcqueary.jmsperf;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 
 import javax.jms.*;
 import javax.naming.*;
@@ -52,36 +53,54 @@ import javax.transaction.xa.*;
 
 import org.apache.commons.collections4.BidiMap;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
-import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 
-public class JMSProducer extends JMSWorker implements Runnable {
+import static com.tibco.mcqueary.jmsperf.Executive.PFX;
 
-	public static final String PROPERTY_FILE = "producer.properties";
-	
+public class JMSProducer extends JMSClient implements Runnable {
+
+	public static final String PROP_PRODUCER_RATE = PFX + "producer.send.rate";
+	public static final String PROP_PRODUCER_COMPRESSION = PFX
+			+ "producer.message.compression";
+	public static final String PROP_PRODUCER_PAYLOAD_FILENAME = PFX
+			+ "producer.payload.filename";
+	public static final String PROP_PRODUCER_PAYLOAD_SIZE = PFX
+			+ "producer.payload.size";
+	public static final String PROP_PRODUCER_PAYLOAD_MINSIZE = PFX
+			+ "producer.message.size.minimum";
+	public static final String PROP_PRODUCER_PAYLOAD_MAXSIZE = PFX
+			+ "producer.message.size.maximum";
+	public static final String PROP_PRODUCER_DELIVERY_MODE = PFX
+			+ "producer.delivery.mode";
+	public static final String PROP_PRODUCER_TIMESTAMP = PFX
+			+ "producer.message.timestamp";
+
 	public static BidiMap<String,Integer> deliveryModes = 
             new DualHashBidiMap<String, Integer>();
 	
 	// parameters
-	private String payloadFile = null;
-	private boolean compression = false;
-	private Integer msgRate = null;
-	private Integer minMsgSize = null;
-	private Integer maxMsgSize = null;
 	private Integer deliveryMode = null;
-	private StringBuffer msgBuffer = null;
+	private Integer msgRate = null;
+	private boolean compression = false;
+	private Integer payloadMinBytes = null;
+	private Integer payloadMaxBytes = null;
 	private byte[] payloadBytes = null;
+	private String payloadFile = null;
+	private boolean useRandomSize = false;
+	private boolean timestampEnabled =  false;
 
 	// variables
-	private int sentCount;
 	private long startTime;
 	private long endTime;
 	private long elapsed;
 	private boolean stopNow;
+	private StringBuffer msgBuffer = null;
 
-	private boolean useRandomSize = false;
 	private Random rand = null;
+	private volatile int currMsgCount = 0;
+	private volatile int sentCount = 0;
 
 	// create the producer threads
 	/**
@@ -89,92 +108,49 @@ public class JMSProducer extends JMSWorker implements Runnable {
 	 * 
 	 * @param args
 	 *            the command line arguments
+	 * @throws ConfigurationException 
+	 * @throws NamingException 
+	 * @throws IllegalArgumentException 
 	 */
-	public JMSProducer(Configuration input) throws NoSuchElementException {
-		super(input);
-//		PropertiesConfiguration defaultConfig = new PropertiesConfiguration();
+	public JMSProducer(PropertiesConfiguration inputConfig) 
+					throws IllegalArgumentException, NamingException {
+		super(inputConfig);
 
-		Manager.listConfig("JMSProducer constructor", this.config);
+		logger.debug(logger.getName());
+		logger.debug(ConfigHandler.getConfigString("JMSProducer constructor", this.config));
 		
 		deliveryModes.put("NON_PERSISTENT", DeliveryMode.NON_PERSISTENT);
 		deliveryModes.put("PERSISTENT", DeliveryMode.PERSISTENT);
 	
-		
-		payloadFile = config.getString(Manager.PROP_PRODUCER_PAYLOAD_FILENAME);
-		compression = config.getBoolean(Manager.PROP_PRODUCER_COMPRESSION);
-		msgRate = config.getInt(Manager.PROP_PRODUCER_RATE,0);
-		txnSize = config.getInt(Manager.PROP_TRANSACTION_SIZE);
-		count = config.getInt(Manager.PROP_MESSAGE_COUNT);
-		runTime = config.getInt(Manager.PROP_DURATION);
-		minMsgSize = config.getInt(Manager.PROP_PRODUCER_PAYLOAD_MINSIZE);
-		maxMsgSize = config.getInt(Manager.PROP_PRODUCER_PAYLOAD_MAXSIZE);
-		if (minMsgSize < maxMsgSize)
-			useRandomSize = true;
-		deliveryMode = deliveryModes.get(config.getString(Manager.PROP_PRODUCER_DELIVERY_MODE));
-		
-		// print parameters
-		System.err.println();
-		System.err
-				.println("------------------------------------------------------------------------");
-		String className = JMSProducer.class.getName();
-		className = className.substring(className.lastIndexOf('.')+1);
-		System.err.println(className);
-		System.err
-				.println("------------------------------------------------------------------------");
-		System.err.println("Broker Flavor................ " + flavor);
-		System.err.println("JNDI Provider................ " + jndiProviderURL);
-		System.err.println("Initial Context Factory...... " + contextFactoryName);
-		System.err.println("Connection Factory........... "
-				+ connectionFactoryName);
-		System.err.println("User......................... " + username);
-		System.err.println("Destination.................. " + "(" + destType
-				+ ") " + destName);
-		System.err.println("Unique Destinations.......... " + uniqueDests);
-		if (useRandomSize) {
-			System.err.println("Min Message Size............. " + minMsgSize);
-			System.err.println("Max Message Size............. "
-					+ (payloadFile != null ? payloadFile : String
-							.valueOf(maxMsgSize)));
-		} else {
-			System.err.println("Message Size................. "
-					+ (payloadFile != null ? payloadFile : String
-							.valueOf(maxMsgSize)));
+		try {
+			payloadFile = config.getString(PROP_PRODUCER_PAYLOAD_FILENAME);
+			compression = config.getBoolean(PROP_PRODUCER_COMPRESSION, false);
+			msgRate = config.getInt(PROP_PRODUCER_RATE,0);
+			payloadMinBytes = config.getInt(PROP_PRODUCER_PAYLOAD_MINSIZE,0);
+			payloadMaxBytes = config.getInt(PROP_PRODUCER_PAYLOAD_MAXSIZE,0);
+			if (payloadMinBytes < payloadMaxBytes)
+				useRandomSize = true;
+			deliveryMode = deliveryModes.get(config.getString(PROP_PRODUCER_DELIVERY_MODE));
+			timestampEnabled = config.getBoolean(PROP_PRODUCER_TIMESTAMP);
+			
+		} catch (ConversionException ce)
+		{
+			throw new IllegalArgumentException(ce.getMessage(), ce);
 		}
-		if (count != null && count > 0)
-			System.err.println("Count........................ " + count);
-		else
-			System.err.println("Count........................ " + count
-					+ " (unlimited)");
-
-		if (runTime != null && runTime > 0)
-			System.err.println("Duration..................... " + runTime);
-		else
-			System.err.println("Duration..................... " + runTime
-					+ " (unlimited)");
-
-		System.err.println("Producer Sessions............ " + sessions);
-		System.err.println("Producer Connections......... " + connections);
-		System.err.println("DeliveryMode................. "
-				+ deliveryModes.get(deliveryMode));
-		System.err.println("Compression.................. " + compression);
-		System.err.println("XA........................... " + xa);
-		if (msgRate != null && msgRate > 0)
-			System.err.println("Message Rate................. " + msgRate);
-		else
-			System.err.println("Message Rate................. " + msgRate
-					+ " (unlimited)");
-
-		if (txnSize!=null && txnSize > 0)
-			System.err.println("Transaction Size............. " + txnSize);
-		System.err
-				.println("------------------------------------------------------------------------");
-		System.err.println();
 	}
 
-	public void start() {
-		try {
+	@Override
+	public void setup() {
+		// TODO Auto-generated method stub
+		
+	}
 
-			if (!xa)
+	@Override
+	public void startup() {
+		try {
+			printConsoleBanner();
+
+			if (!isXa())
 				createConnectionFactoryAndConnections();
 			else
 				createXAConnectionFactoryAndXAConnections();
@@ -185,15 +161,19 @@ public class JMSProducer extends JMSWorker implements Runnable {
 				Thread t = new Thread(this);
 				tv.add(t);
 				t.start();
-				System.err.print(String.format("\r    sessions created: %6d",
-						tv.size()));
+				if (tv.size() > 1 && (i%1000)==0)
+					logger.info(tv.size() + " of " + sessions + " sessions created.");
+					
 			}
-			System.err.println("\nPRODUCING");
+			logger.info(tv.size() + " of " + sessions
+					+ " sessions created.");
+			
+			logger.info(shortClassName + " commenced processing.");
 
 			// run for the specified amount of time
-			if (runTime > 0) {
+			if (getDuration() > 0) {
 				try {
-					Thread.sleep(runTime * 1000);
+					Thread.sleep(getDuration() * 1000);
 				} catch (InterruptedException e) {
 				}
 
@@ -215,10 +195,10 @@ public class JMSProducer extends JMSWorker implements Runnable {
 			}
 
 			// close connections
-			cleanup();
+			cleanupConnections();
 
 			// print performance
-			LOGGER.info(getPerformance());
+			logger.info(getPerformance());
 		} catch (NamingException e) {
 			e.printStackTrace();
 		} catch (JMSException e) {
@@ -227,7 +207,7 @@ public class JMSProducer extends JMSWorker implements Runnable {
 	}
 
 	/**
-	 * Update the total sent count.
+	 * Update the total sent msgGoal.
 	 */
 	private synchronized void countSends(int count) {
 		sentCount += count;
@@ -237,7 +217,6 @@ public class JMSProducer extends JMSWorker implements Runnable {
 	 * The producer thread's run method.
 	 */
 	public void run() {
-		int msgCount = 0;
 		MsgRateChecker msgRateChecker = null;
 
 		try {
@@ -280,15 +259,15 @@ public class JMSProducer extends JMSWorker implements Runnable {
 
 			// performance settings
 			msgProducer.setDisableMessageID(true);
-			msgProducer.setDisableMessageTimestamp(true);
+			msgProducer.setDisableMessageTimestamp(!this.isTimestampEnabled());
 
 			// create the message
 			Message msg = createMessage(session);
 
 			// enable compression if necessary
 			if (compression)
-				msg.setBooleanProperty("JMS_TIBCO_COMPRESS", true);
-
+				compressMessageBody(msg); 
+				
 			// initialize message rate checking
 			if (msgRate > 0)
 				msgRateChecker = new MsgRateChecker(msgRate);
@@ -298,40 +277,45 @@ public class JMSProducer extends JMSWorker implements Runnable {
 			int randomSize = 0;
 
 			// publish messages
-			while ((count == 0 || msgCount < (count / sessions)) && !stopNow) {
+			while ((msgGoal == 0 || getMsgCount() < (msgGoal / sessions)) && !stopNow) {
 				// a no-op for local txns
 				txnHelper.beginTx(xaResource);
 
 				if (useRandomSize) {
 					if (rand == null)
 						rand = new Random();
-					randomSize = rand.nextInt(maxMsgSize - minMsgSize + 1)
-							+ minMsgSize;
-					// LOGGER.trace("Generating message body of size " +
+					randomSize = rand.nextInt(payloadMaxBytes - payloadMinBytes + 1)
+							+ payloadMinBytes;
+					// logger.trace("Generating message body of size " +
 					// randomSize + " bytes.");
 					msg.clearBody();
 					try {
 						((BytesMessage) msg).writeBytes(payloadBytes, 0,
 								randomSize);
 					} catch (IndexOutOfBoundsException e) {
-						LOGGER.error(
+						logger.error(
 								"Caught IndexOutOfBoundsException while writng message body:"
 										+ "	payloadBytes.length == "
 										+ payloadBytes.length
 										+ "	randomSize == " + randomSize, e);
 					}
 				}
-				msgProducer.send(msg);
-
-				msgCount++;
-
+				synchronized(this)
+				{
+					if (getMsgCount() < msgGoal)
+					{
+						msgProducer.send(msg);
+						bumpMsgCount();
+					}
+				}
+				
 				// commit the transaction if necessary
-				if (txnSize > 0 && msgCount % txnSize == 0)
+				if (txnSize > 0 && getMsgCount() % txnSize == 0)
 					txnHelper.commitTx(xaResource, session);
 
 				// check the message rate
 				if (msgRate > 0)
-					msgRateChecker.checkMsgRate(msgCount);
+					msgRateChecker.checkMsgRate(getMsgCount());
 			}
 
 			// commit any remaining messages
@@ -339,19 +323,28 @@ public class JMSProducer extends JMSWorker implements Runnable {
 				txnHelper.commitTx(xaResource, session);
 		} catch (JMSException e) {
 			if (!stopNow) {
-				LOGGER.error("JMSException: ", e);
+				logger.error("JMSException: ", e);
 				Exception le = e.getLinkedException();
 				if (le != null) {
-					LOGGER.error("Linked exception: ", le);
+					logger.error("Linked exception: ", le);
 				}
 			}
 		}
 
 		stopTiming();
 
-		countSends(msgCount);
+		countSends(getMsgCount());
 	}
 
+	private synchronized void bumpMsgCount()
+	{
+		++currMsgCount;
+	}
+	private synchronized int getMsgCount()
+	{
+		return currMsgCount;
+	}
+	
 	/**
 	 * Create the message.
 	 */
@@ -373,30 +366,30 @@ public class JMSProducer extends JMSWorker implements Runnable {
 
 				payload = new String(bytesRead);
 
-				if (minMsgSize > bufferSize) {
-					LOGGER.error("Payload file size (" + bufferSize
-							+ ") < minimum msg size (" + maxMsgSize + ")");
-					LOGGER.error("Exiting.");
+				if (payloadMinBytes > bufferSize) {
+					logger.error("Payload file size (" + bufferSize
+							+ ") < minimum msg size (" + payloadMaxBytes + ")");
+					logger.error("Exiting.");
 					System.exit(-1);
 				}
 
-				if (maxMsgSize > bufferSize) {
-					LOGGER.error("Payload file size (" + bufferSize
-							+ ") < maximum msg size (" + maxMsgSize
+				if (payloadMaxBytes > bufferSize) {
+					logger.error("Payload file size (" + bufferSize
+							+ ") < maximum msg size (" + payloadMaxBytes
 							+ "). Setting maximum msg size to " + bufferSize);
-					maxMsgSize = bufferSize;
+					payloadMaxBytes = bufferSize;
 				}
 
 			} catch (IOException e) {
-				LOGGER.error("Error: unable to load payload file:", e);
+				logger.error("Error: unable to load payload file:", e);
 			}
 
 		}
 
-		if (maxMsgSize > 0) {
-			msgBuffer = new StringBuffer(maxMsgSize);
+		if (payloadMaxBytes > 0) {
+			msgBuffer = new StringBuffer(payloadMaxBytes);
 			char c = 'A';
-			for (int i = 0; i < maxMsgSize; i++) {
+			for (int i = 0; i < payloadMaxBytes; i++) {
 				msgBuffer.append(c++);
 				if (c > 'z')
 					c = 'A';
@@ -413,6 +406,20 @@ public class JMSProducer extends JMSWorker implements Runnable {
 		return msg;
 	}
 
+	
+/**
+ * Compresses the Message body, if supported by the provider. Default
+ * implementation is a no-op
+ *  
+ * @param msg - The message to be compressed
+ * @return success/failure
+ * @throws JMSException 
+ */
+	public void compressMessageBody(Message msg) throws JMSException
+	{
+		// No-op for generic JMSProducer
+	}
+	
 	private synchronized void startTiming() {
 		if (startTime == 0)
 			startTime = System.currentTimeMillis();
@@ -432,7 +439,7 @@ public class JMSProducer extends JMSWorker implements Runnable {
 			int perf = (int) ((sentCount * 1000.0) / elapsed);
 			return (sentCount + " messages took " + seconds
 					+ " seconds, performance is " + perf + " msg/sec " + "("
-					+ perf / sessions + " msg/sec per thread)");
+					+ perf / sessions + " msg/sec/session)");
 		} else {
 			return "interval too short to calculate a message rate";
 		}
@@ -446,9 +453,9 @@ public class JMSProducer extends JMSWorker implements Runnable {
 	}
 
 	/**
-	 * Get the total produced message count.
+	 * Get the total produced message msgGoal.
 	 */
-	public int getSentCount() {
+	public synchronized int getSentCount() {
 		return sentCount;
 	}
 
@@ -548,21 +555,81 @@ public class JMSProducer extends JMSWorker implements Runnable {
 		return false;
 	}
 
-	@Override
-	public void setup() {
-		// TODO Auto-generated method stub
-		
+	public void printConsoleBanner()
+	{
+		// print parameters
+		System.err.println();
+		System.err
+				.println("------------------------------------------------------------------------");
+		String className = JMSProducer.class.getName();
+		className = className.substring(className.lastIndexOf('.')+1);
+		System.err.println(className);
+		System.err
+				.println("------------------------------------------------------------------------");
+		if (flavor != null)
+			System.err.println("Broker Flavor................ " + flavor);
+		System.err.println("JNDI Provider................ " + getBrokerURL());
+		System.err.println("Initial Context Factory...... " + contextFactoryName);
+		System.err.println("Connection Factory........... "
+				+ connectionFactoryName);
+		if (getUsername()!=null)
+			System.err.println("User......................... " + getUsername());
+		System.err.println("Destination.................. " + "(" + destType
+				+ ") " + destName);
+		System.err.println("Unique Destinations.......... " + uniqueDests);
+		System.err.println("Timestamp Messages........... " + this.isTimestampEnabled());
+		if (useRandomSize) {
+			System.err.println("Min Message Size............. " + payloadMinBytes);
+			System.err.println("Max Message Size............. "
+					+ (payloadFile != null ? payloadFile : String
+							.valueOf(payloadMaxBytes)));
+		} else {
+			System.err.println("Message Size................. "
+					+ (payloadFile != null ? payloadFile : String
+							.valueOf(payloadMaxBytes)));
+		}
+		if (msgGoal > 0)
+			System.err.println("Count........................ " + msgGoal);
+		else
+			System.err.println("Count........................ " + msgGoal
+					+ " (unlimited)");
+	
+		if (duration > 0)
+			System.err.println("Duration..................... " + duration);
+		else
+			System.err.println("Duration..................... " + duration
+					+ " (unlimited)");
+	
+		System.err.println("Producer Sessions............ " + sessions);
+		System.err.println("Producer Connections......... " + connections);
+		System.err.println("DeliveryMode................. "
+				+ deliveryModes.inverseBidiMap().get(deliveryMode));
+		System.err.println("Compression.................. " + compression);
+		System.err.println("XA........................... " + xa);
+		if (msgRate != null && msgRate > 0)
+			System.err.println("Message Rate................. " + msgRate);
+		else
+			System.err.println("Message Rate................. " + msgRate
+					+ " (unlimited)");
+	
+		if (getTxnSize() > 0)
+			System.err.println("Transaction Size............. " + getTxnSize());
+		System.err
+				.println("------------------------------------------------------------------------");
+		System.err.println();		
 	}
 
-	@Override
-	public void execute() {
-		// TODO Auto-generated method stub
-		
+	/**
+	 * @return the timestampEnabled
+	 */
+	protected synchronized boolean isTimestampEnabled() {
+		return timestampEnabled;
 	}
 
-	@Override
-	public void execute(int seconds) {
-		// TODO Auto-generated method stub
-		
+	/**
+	 * @param timestampEnabled the timestampEnabled to set
+	 */
+	protected synchronized void setTimestampEnabled(boolean timestampEnabled) {
+		this.timestampEnabled = timestampEnabled;
 	}
 }

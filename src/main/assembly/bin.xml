@@ -15,6 +15,22 @@
 			</includes>
 		</fileSet>
 		<fileSet>
+			<directory>src/main/resources</directory>
+			<outputDirectory>conf</outputDirectory>
+			<includes>
+				<include>*.xml</include>
+			</includes>
+		</fileSet>
+		<fileSet>
+			<directory>src/test/resources</directory>
+			<outputDirectory>conf</outputDirectory>
+			<includes>
+				<include>tibems.properties</include>
+				<include>kaazing.properties</include>
+				<include>activemq.properties</include>
+			</includes>
+		</fileSet>
+		<fileSet>
 			<directory>src/main/java</directory>
 			<outputDirectory>conf</outputDirectory>
 			<includes>
@@ -22,20 +38,6 @@
 				<include>*.properties</include>
 			</includes>
 		</fileSet>
-		<fileSet>
-			<directory>src/test/resources/tibems</directory>
-			<outputDirectory>conf</outputDirectory>
-			<includes>
-				<include>*.properties</include>
-			</includes>
-		</fileSet>
-		<fileSet>
-			<directory>src/test/resources/kaazing</directory>
-			<outputDirectory>conf</outputDirectory>
-			<includes>
-				<include>*.properties</include>
-			</includes>
-		</fileSet>		
 		<fileSet>
 			<directory>src/main/bin</directory>
 			<outputDirectory>bin</outputDirectory>
