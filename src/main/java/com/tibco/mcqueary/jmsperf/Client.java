@@ -1,5 +1,9 @@
 package com.tibco.mcqueary.jmsperf;
 
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.management.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,113 +12,65 @@ import javax.jms.*;
 import javax.naming.*;
 import javax.transaction.xa.*;
 
-import org.apache.commons.collections.ExtendedProperties;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationConverter;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.log4j.Logger;
 
-import com.tibco.mcqueary.jmsperf.ConfigHandler.DestType;
+import static com.tibco.mcqueary.jmsperf.Constants.*;
 
-import static com.tibco.mcqueary.jmsperf.Executive.PFX;
-
-abstract class JMSClient implements Worker {
-	public static final String PROP_JNDI_URL = Context.PROVIDER_URL;
-	public static final String PROP_JNDI_USERNAME = Context.SECURITY_PRINCIPAL;
-	public static final String PROP_JNDI_PASSWORD = Context.SECURITY_CREDENTIALS;
-	public static final String PROP_JNDI_CONTEXT_FACTORY = Context.INITIAL_CONTEXT_FACTORY;
-
-	public static final String PROP_PROVIDER = PFX+"provider.name";
-	public static final String PROP_PROVIDER_URL = PFX+"provider.connection.url";
-	public static final String PROP_PROVIDER_USERNAME = PFX+"provider.connection.username";
-	public static final String PROP_PROVIDER_PASSWORD = PFX+"provider.connection.password";
-	public static final String PROP_PROVIDER_CONTEXT_FACTORY = PFX
-			+ "provider.context.factory";
-	public static final String PROP_PROVIDER_CONNECTION_FACTORY = PFX
-			+ "provider.connection.factory";
-
-	public static final String PROP_CLIENT_CONNECTIONS = PFX + "client.connections";
-	public static final String PROP_CLIENT_SESSIONS = PFX + "client.sessions";
-	public static final String PROP_UNIQUE_DESTINATIONS = PFX + "unique.destinations";
-	public static final String PROP_DESTINATION_TYPE = PFX + "destination.type";
-	public static final String PROP_DESTINATION_NAME = PFX + "destination.name";
-	public static final String PROP_PROVIDER_TOPIC_FORMAT = PFX
-			+ "provider.topic.lookup.format";
-	public static final String PROP_PROVIDER_QUEUE_FORMAT = PFX
-			+ "provider.queue.lookup.format";
-	public static final String PROP_MESSAGE_COUNT = PFX + "message.count";
-	public static final String PROP_DURATION_SECONDS = PFX + "duration.seconds";
-	public static final String PROP_REPORT_INTERVAL_SECONDS = PFX + "report.interval.seconds";
-	public static final String PROP_REPORT_WARMUP_SECONDS = PFX + "report.warmup.seconds";
-	public static final String PROP_TRANSACTION_XA = PFX + "transaction.xa";
-	public static final String PROP_TRANSACTION_SIZE = PFX + "transaction.size";
-	public static final String PROP_DEBUG = PFX + "debug";
-	
-	protected final static int MEGABYTE = (1024 * 1024);
-
-	protected static enum Flavor {
-		GENERIC, TIBEMS, KAAZING, WMQ, HORNETQ, SWIFTMQ, ACTIVEMQ, QPID, OPENMQ
-	};
-
-	protected final static Map<String, Flavor> flavors;
-	static {
-		Map<String, Flavor> fMap = new HashMap<String, Flavor>();
-		fMap.put("GENERIC", Flavor.GENERIC);
-		fMap.put("TIBEMS", Flavor.TIBEMS);
-		fMap.put("KAAZING", Flavor.KAAZING);
-		fMap.put("WMQ", Flavor.WMQ);
-		fMap.put("HORNETQ", Flavor.HORNETQ);
-		fMap.put("SWIFTMQ", Flavor.SWIFTMQ);
-		fMap.put("ACTIVEMQ", Flavor.ACTIVEMQ);
-		fMap.put("QPID", Flavor.QPID);
-		fMap.put("OPENMQ", Flavor.OPENMQ);
-		flavors = Collections.unmodifiableMap(fMap);
-	}
-	// private static final Logger logger =
-	// Logger.getLogger(jmsPerfCommon.class);
+//	abstract class Client implements Worker {
+abstract class Client {
 
 	// common variables
-	protected static Logger logger = Logger.getLogger(JMSClient.class);
+	protected static Logger logger = Logger.getLogger(Client.class);
 	protected MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
 	protected static Context jndiContext = null;
 	protected PropertiesConfiguration config = null;
-
+	protected ConnectionFactory connectionFactory = null;
+	
 	private Vector<Connection> connVector;
 	private Iterator<Connection> connVectorIterator;
 	private int destIter = 0;
 
 	// Common Parameters
-	protected static Flavor flavor = Flavor.GENERIC;
-	protected String brokerURL = null;
-	protected String connectionFactoryName = null;
-	protected String contextFactoryName = null;
-	protected String destName = null;
-	protected String destType = null;
-	protected String destNameFormat = null;
-	protected int connections = 1;
-	protected int sessions = 1;
-	protected int msgGoal = 0;
-	protected String username = null;
-	protected String password = null;
-	protected boolean uniqueDests = false;
-	protected boolean xa = false;
-	protected int reportInterval = 0;
-	protected int txnSize = 0;
-	protected int duration = 0;
-	protected boolean debug = false;
-	
+	protected Provider provider = Provider.valueOf(PROP_PROVIDER_NAME_DEFAULT);
+	protected String brokerURL = PROP_PROVIDER_URL_DEFAULT ;
+	protected String connectionFactoryName = Constants.PROP_PROVIDER_CONNECTION_FACTORY_DEFAULT;
+	protected String contextFactoryName = Constants.PROP_JNDI_CONTEXT_FACTORY_DEFAULT;
+	protected String destName = Constants.PROP_DESTINATION_NAME_DEFAULT;
+	protected DestType destType = DestType.TOPIC;
+	protected String destNameFormat = Constants.PROP_PROVIDER_TOPIC_FORMAT_DEFAULT;
+	protected int connections = Constants.PROP_CLIENT_CONNECTIONS_DEFAULT;
+	protected int sessions = Constants.PROP_CLIENT_SESSIONS_DEFAULT;
+	protected int msgGoal = Constants.PROP_MESSAGE_COUNT_DEFAULT;
+	protected String username = Constants.PROP_PROVIDER_USERNAME_DEFAULT;
+	protected String password = Constants.PROP_PROVIDER_PASSWORD_DEFAULT;
+	protected boolean uniqueDests = Constants.PROP_UNIQUE_DESTINATIONS_DEFAULT;
+	protected boolean xa = Constants.PROP_UNIQUE_DESTINATIONS_DEFAULT;
+	protected int reportInterval = Constants.PROP_REPORT_INTERVAL_SECONDS_DEFAULT;
+	protected int warmup = Constants.PROP_REPORT_WARMUP_SECONDS_DEFAULT;
+	protected int offset = Constants.PROP_REPORT_OFFSET_MSEC_DEFAULT;
+	protected int txnSize = Constants.PROP_TRANSACTION_SIZE_DEFAULT;
+	protected int duration = Constants.PROP_DURATION_SECONDS_DEFAULT;
+	protected boolean debug = Constants.PROP_DEBUG_DEFAULT;
+	protected boolean transacted = false;
+	protected final Set<AckMode> ackModes = EnumSet.noneOf(AckMode.class);
 	
 	ConcurrentHashMap<Long, StatRecord> statList = new ConcurrentHashMap<Long, StatRecord>();
+	protected List<StatRecord> stats = new Vector<StatRecord>();
 
 	protected String shortClassName = this.getClass().getSimpleName();
 	
-	protected List<StatRecord> stats = new Vector<StatRecord>();
-
-	protected JMSClient(PropertiesConfiguration input)
+	protected Client(PropertiesConfiguration input)
 			throws IllegalArgumentException, NamingException {
 		this.config = input;
 
+		ackModes.add(AckMode.AUTO_ACKNOWLEDGE);
+		ackModes.add(AckMode.CLIENT_ACKNOWLEDGE);
+		ackModes.add(AckMode.DUPS_OK_ACKNOWLEDGE);
+		
 		ConfigHandler.listConfig(shortClassName
 				+ " constructor invoked with this configuration: ", this.config);
 
@@ -122,107 +78,146 @@ abstract class JMSClient implements Worker {
 		org.apache.log4j.MDC.put("PID", rt.getName());
 
 		try {
-			debug = config.getBoolean(PROP_DEBUG,false);
-			flavor = flavors
-					.get(config.getString(PROP_PROVIDER));
-			brokerURL = config.getString(PROP_PROVIDER_URL);
+			debug = config.getBoolean(PROP_DEBUG, debug);
+			provider = Provider.valueOf(config.getString(PROP_PROVIDER_NAME, provider.name()).toUpperCase());
+			if (provider!=null)
+			{
+				config.setProperty(PROP_PROVIDER_TOPIC_FORMAT, provider.topicFormat());
+				config.setProperty(PROP_PROVIDER_QUEUE_FORMAT, provider.queueFormat());
+			}
+			brokerURL = config.getString(PROP_PROVIDER_URL, provider.url());
 			contextFactoryName = config
-					.getString(PROP_PROVIDER_CONTEXT_FACTORY);
+					.getString(PROP_PROVIDER_CONTEXT_FACTORY,provider.factory());
 			connectionFactoryName = config
-					.getString(PROP_PROVIDER_CONNECTION_FACTORY);
-			username = config.getString(PROP_PROVIDER_USERNAME);
-			password = config.getString(PROP_PROVIDER_PASSWORD);
-			connections = config.getInt(PROP_CLIENT_CONNECTIONS);
-			uniqueDests = config.getBoolean(PROP_UNIQUE_DESTINATIONS);
-			sessions = config.getInt(PROP_CLIENT_SESSIONS);
-			msgGoal = config.getInt(PROP_MESSAGE_COUNT);
-			duration = config.getInt(PROP_DURATION_SECONDS);
-			destType = config.getString(PROP_DESTINATION_TYPE);
-			destName = config.getString(PROP_DESTINATION_NAME);
+					.getString(PROP_PROVIDER_CONNECTION_FACTORY, connectionFactoryName);
+			username = config.getString(PROP_PROVIDER_USERNAME, username);
+			password = config.getString(PROP_PROVIDER_PASSWORD, password);
+			connections = config.getInt(PROP_CLIENT_CONNECTIONS, connections);
+			uniqueDests = config.getBoolean(PROP_UNIQUE_DESTINATIONS, uniqueDests);
+			sessions = config.getInt(PROP_CLIENT_SESSIONS, sessions);
+			msgGoal = config.getInt(PROP_MESSAGE_COUNT, msgGoal);
+			duration = config.getInt(PROP_DURATION_SECONDS, duration);
+			destType = DestType.valueOf(
+					config.getString(PROP_DESTINATION_TYPE,destType.name()).toUpperCase());
+			destName = config.getString(PROP_DESTINATION_NAME, destName);
 			switch (destType)
 			{
-			case DestType.TOPIC:
+			case TOPIC:
 				destNameFormat = config.getString(PROP_PROVIDER_TOPIC_FORMAT);
 				break;
-			case DestType.QUEUE:
+			case QUEUE:
 				destNameFormat = config.getString(PROP_PROVIDER_QUEUE_FORMAT);
 				break;
 			default:
 				break;
 			}
 			destName = String.format(destNameFormat, destName);
-			xa = config.getBoolean(PROP_TRANSACTION_XA, false);
-			txnSize = config.getInt(PROP_TRANSACTION_SIZE);
-			reportInterval = config.getInt(PROP_REPORT_INTERVAL_SECONDS);
+			xa = config.getBoolean(PROP_TRANSACTION_XA, xa);
+			txnSize = config.getInt(PROP_TRANSACTION_SIZE, txnSize);
+			transacted = (txnSize > 0);
+			reportInterval = config.getInt(PROP_REPORT_INTERVAL_SECONDS, reportInterval);
+			warmup = config.getInt(PROP_REPORT_WARMUP_SECONDS, warmup);
+			offset = config.getInt(PROP_REPORT_OFFSET_MSEC, offset);
+			
 		} catch (ConversionException e) {
 			throw new IllegalArgumentException(e.getMessage(),e);
 		}
 
 		initJNDI(config);
+		if (this.connectionFactoryName != null) {
+			connectionFactory = (ConnectionFactory) jndiLookup(connectionFactoryName);
+			if (this.connectionFactory == null) {
+				logger.error("JNDI lookup failed for " + connectionFactoryName);
+				return;
+			}
+		}
 	}
 
-	public JMSClient(ClientBuilder builder) {
-//		this.flavor = flavors.valueOf(builder.flavor);
+	public Client(Builder<?> builder) {
+		this.provider = builder.provider;
+		this.connections = builder.connections;
+		this.sessions = builder.sessions;
+		this.brokerURL = builder.brokerURL;
+		this.connectionFactoryName = builder.connectionFactoryName;
+		this.contextFactoryName = builder.contextFactoryName;
+		this.destName = builder.destName;
+		this.destType = builder.destType;
+		this.uniqueDests = builder.uniqueDests;
+		this.msgGoal = builder.msgGoal;
+		this.username = builder.username;
+		this.password = builder.password;
+		this.duration = builder.duration;
+		this.warmup = builder.warmup;
+		this.offset = builder.offset;
+		this.txnSize = builder.txnSize;
+		this.xa = builder.xa;
+		this.reportInterval = builder.reportInterval;
+		this.debug = builder.debug;
 	}
 
 	public void setup() {
 		// TODO 
+
+
 	}
 
-	protected void createConnectionFactoryAndConnections()
+	protected void createConnections()
 			throws NamingException, JMSException {
-		// lookup the connection factory
-		ConnectionFactory factory = null;
-		if (this.connectionFactoryName != null) {
-			factory = (ConnectionFactory) jndiLookup(connectionFactoryName);
-		}
+		
+		logger.info("Creating connections using URL " + this.brokerURL);
 
-		if (factory == null) {
-			logger.error("JNDI lookup failed for " + connectionFactoryName);
-			return;
-		}
-
-		logger.info("Creating connections.");
+		String intSpec = "%"+String.valueOf(connections).length()+"d";
+		String format = intSpec + "/" + connections + " connections created/started.";
 
 		// create the connections
 		this.connVector = new Vector<Connection>(this.connections);
 		int i=0;
+		Connection conn = null;
 		try {
-			for (; i < this.connections; i++) {
-				Connection conn = null;
-				conn = factory.createConnection(this.username, this.password);
+			while (i < this.connections) {
+				Thread.sleep(1);
+				conn = this.connectionFactory.createConnection(this.username, this.password);
 				if (conn != null) {
-//					if (conn.getClientID()==null)
-//						conn.setClientID("connection:"+i);
-					conn.start();
+//					conn.start();
+					++i;
 					this.connVector.add(conn);
-					if ((i != 0) && (i % 1000) == 0) {
-						logger.info(i + " of "
-								+ connections + " connections created.");
+					if ((i % 1000) == 0) {
+						logger.info(String.format(format, i));
 					}
 				}
 			}
+			format = intSpec + "/" + connections + " connections started.";
+			for (i=0; i < this.connVector.size(); i++ )
+			{
+				conn = connVector.elementAt(i);
+				conn.start();
+				if ((i>0) && (i % 1000) == 0) {
+					logger.info(String.format(format, i));
+				}				
+			}
 		} catch (JMSException e) {
-			logger.error("Exception while creating connection #" + (i + 1)
-					+ ": ", e);
+			logger.error(e.getMessage());
+			logger.trace(e);
 			Exception linkedEx = ((JMSException) e).getLinkedException();
 			if (null != linkedEx) {
-				logger.error("Linked Exception:", linkedEx);
+				logger.trace("Linked Exception:", linkedEx);
 			}
 		} catch (OutOfMemoryError e) {
 			MemoryUsage m = this.memoryBean.getHeapMemoryUsage();
-			logger.error("Exception encountered (" + this.connVector.size()
+			logger.error("OutOfMemoryError encountered (" + this.connVector.size()
 					+ " connections : Memory Use :" + m.getUsed() / MEGABYTE
-					+ "M/" + m.getMax() / MEGABYTE + "M)", e);
+					+ "M/" + m.getMax() / MEGABYTE + "M):");
+			logger.error(e.getMessage());
 		} catch (RuntimeException re) {
-			logger.error("Runtime exception!", re);
+			logger.error("Runtime exception:", re);
+		} catch (Exception e) {
+			logger.error("Unexpected exception:", e);
 		} finally {
 			this.connVectorIterator = connVector.listIterator();
-			logger.info(this.connVector.size() + " of " + connections
-					+ " connections created.");
+			logger.info(String.format(format, this.connVector.size()));
 			if (this.connVector.size() < connections)
 			{
-				throw new JMSException("Couldn't create requested number of connections");
+				throw new JMSException("Couldn't create requested number of connections.");
 			}
 		}
 	}
@@ -298,24 +293,33 @@ abstract class JMSClient implements Worker {
 		// separate lookup.
 		// TODO No more evil globals
 		String name = destName;
-
 		Destination dest = null;
+		
 		if (getUniqueDests()) {
 			name = name + "." + ++destIter;
 		}
-		switch (getDestType())
-		{
-		case DestType.TOPIC:
-			dest = s.createTopic(name);
-			break;
-		case DestType.QUEUE:
-			dest = s.createQueue(name);
-			break;
-		default:
-			break;
+
+		try {
+			dest = (Destination) jndiLookup(name);
+		} catch (NamingException e) {
 		}
+		
+		if (dest == null)
+		{
+			switch (getDestType())
+			{
+			case TOPIC:
+				dest = s.createTopic(name);
+				break;
+			case QUEUE:
+				dest = s.createQueue(name);
+				break;
+			default:
+				break;
+			}
 			logger.trace("Created destination " + name + "("
-				+ dest.getClass().getName() + ")");
+					+ dest.getClass().getName() + ")");
+		}
 		return dest;
 	}
 
@@ -327,6 +331,7 @@ abstract class JMSClient implements Worker {
 		return new JMSPerfTxnHelper(xa);
 	}
 
+	
 	/**
 	 * Helper class for beginning/committing transactions, maintains any
 	 * required state. Each prod/cons thread needs to get an instance of this by
@@ -407,6 +412,70 @@ abstract class JMSClient implements Worker {
 		}
 	}
 
+	protected byte[] createPayload(int payloadSize) { return createPayload(null, payloadSize, payloadSize);}
+	protected byte[] createPayload(String payloadFileName, int payloadSize) {
+		return createPayload(payloadFileName, payloadSize, payloadSize);
+	}
+	/**
+	 * Create the message.
+	 */
+	protected byte[] createPayload(String payloadFileName, int minSize, int maxSize) 
+	{
+		String payload = null;
+		int bufferSize = 0;
+		byte[] payloadBytes = null;
+		int payloadSize=minSize;
+		// create the message
+//		BytesMessage msg = session.createBytesMessage();
+		// add the payload
+		if (payloadFileName != null) {
+			try {
+				InputStream instream = new BufferedInputStream(
+						new FileInputStream(payloadFileName));
+				bufferSize = instream.available();
+				byte[] bytesRead = new byte[bufferSize];
+				instream.read(bytesRead);
+				instream.close();
+
+				payload = new String(bytesRead);
+
+				if (minSize > bufferSize) {
+					logger.error("Payload file size (" + bufferSize
+							+ ") < minimum msg size (" + maxSize + ")");
+					logger.error("Exiting.");
+					System.exit(-1);
+				}
+
+				if (maxSize > bufferSize) {
+					logger.error("Payload file size (" + bufferSize
+							+ ") < maximum msg size (" + maxSize
+							+ "). Setting maximum msg size to " + bufferSize);
+					maxSize = bufferSize;
+				}
+
+			} catch (IOException e) {
+				logger.error("Error: unable to load payload file:", e);
+			}
+		} else if (payloadSize > 0) {
+			StringBuffer msgBuffer = new StringBuffer(payloadSize);
+			char c = 'A';
+			for (int i = 0; i < payloadSize; i++) {
+				msgBuffer.append(c++);
+				if (c > 'z')
+					c = 'A';
+			}
+			payload = msgBuffer.toString();
+		}
+
+		if (payload != null) {
+//			logger.info("Creating message body (" + payload.length() + " bytes)");
+			payloadBytes = payload.getBytes();
+		}
+
+		return payloadBytes;
+	}
+
+
 	/**
 	 * Constructs the JNDI context for this application. Strategy is (in order):
 	 * 1. Inherit any JNDI properties if set<br>
@@ -421,16 +490,18 @@ abstract class JMSClient implements Worker {
 		if (jndiContext != null)
 			return;
 	
+
 		Configuration jndi = new PropertiesConfiguration();
-		Configuration sysConfig = ConfigurationConverter.getConfiguration(System.getProperties());
 		
 		// Inherit any System JNDI properties
-		for (Iterator<String> keys=sysConfig.getKeys("java.naming"); keys.hasNext();)
+		Properties sysProps = System.getProperties();
+		for (Iterator<Object> it = sysProps.keySet().iterator(); it.hasNext();)
 		{
-			String key = keys.next();
-			jndi.setProperty(key, sysConfig.getString(key));
+			String key = (String)it.next();
+			if (key.matches("^java.naming\\..*"))
+				jndi.setProperty(key, sysProps.get(key));
 		}
-		
+				
 		// Override with any project JNDI properties
 		for (Iterator<String> keys=config.getKeys("java.naming"); keys.hasNext();)
 		{
@@ -462,6 +533,12 @@ abstract class JMSClient implements Worker {
 
 		Properties jndiProps = ConfigurationConverter.getProperties(jndi);
 
+		logger.info("Initializing JNDI context with these properties: ");		
+		for (Map.Entry <Object,Object> entry : jndiProps.entrySet())
+		{
+			if (entry.getValue()!=null)
+				logger.info(entry.getKey() + ": " + entry.getValue());
+		}
 		jndiContext = new InitialContext(jndiProps);
 	}
 
@@ -480,23 +557,60 @@ abstract class JMSClient implements Worker {
 		return jndiContext.lookup(objectName);
 	}
 
+	protected void printConsoleBannerHeader()
+	{
+		System.err.println();
+		System.err
+				.println("------------------------------------------------------------------------");
+		System.err.println(this.getClass().getSimpleName());
+		System.err
+				.println("------------------------------------------------------------------------");
+	}
+	protected void printCommonSettings() {
+		if (provider != null)
+			System.err.println("Broker Provider.............. " + provider);
+		System.err.println("Broker URL................... " + getBrokerURL());
+		System.err.println("Initial Context Factory...... "
+				+ contextFactoryName);
+		System.err.println("Connection Factory........... "
+				+ connectionFactoryName);
+		System.err.println("User......................... " + username);
+		System.err.println("Consumer Connections......... " + connections);
+		System.err.println("Consumer Sessions............ " + sessions);		
+		if (this.transacted) {
+			System.err.println("Transaction Size............. " + getTxnSize());
+			System.err.println("XA........................... " + xa);
+		}
+		System.err.println("Destination.................. " + "(" + destType
+				+ ") " + destName);
+		System.err.println("Unique Destinations.......... " + uniqueDests);
+		System.err.println("Count........................ " + msgGoal);
+		System.err.println("Duration..................... " + duration);
+	}
+	protected void printConsoleBannerFooter()
+	{
+		System.err
+		.println("------------------------------------------------------------------------");
+		System.err.println();
+	}
+
 	public PropertiesConfiguration getConfig() {
 		return this.config;
 	}
 
 	/**
-	 * @return the flavor
+	 * @return the provider
 	 */
-	protected static synchronized Flavor getFlavor() {
-		return flavor;
+	protected synchronized Provider getProvider() {
+		return provider;
 	}
 
 	/**
-	 * @param flavor
-	 *            the flavor to set
+	 * @param provider
+	 *            the provider to set
 	 */
-	protected static synchronized void setFlavor(Flavor flavor) {
-		JMSClient.flavor = flavor;
+	protected synchronized void setProvider(Provider provider) {
+		this.provider = provider;
 	}
 
 	/**
@@ -660,15 +774,15 @@ abstract class JMSClient implements Worker {
 	/**
 	 * @return the destType
 	 */
-	protected synchronized String getDestType() {
-		return destType;
+	protected synchronized DestType getDestType() {
+		return this.destType;
 	}
 
 	/**
 	 * @param destType
 	 *            the destType to set
 	 */
-	protected synchronized void setDestType(String destType) {
+	protected synchronized void setDestType(DestType destType) {
 		this.destType = destType;
 	}
 
@@ -746,94 +860,105 @@ abstract class JMSClient implements Worker {
 	protected synchronized void setDuration(Integer duration) {
 		this.duration = duration;
 	}
-	
-	public static class ClientBuilder implements Builder<JMSClient>
+
+	public static abstract class Builder<T extends Builder<T>>
 	{
-		protected int connections;
-		protected int sessions;
-		private String brokerURL;
-		private String connectionFactoryName;
-		private String contextFactoryName;
-		private String destination;
-		private String destType;
-		private boolean uniquedests;
-		private String flavor;
-		private int msgGoal;
-		private String username;
-		private String password;
-		private int duration;
-		private int warmup;
+		private Provider provider = Provider.valueOf(PROP_PROVIDER_NAME_DEFAULT);
+		private String brokerURL = PROP_PROVIDER_URL_DEFAULT ;
+		private String connectionFactoryName = Constants.PROP_PROVIDER_CONNECTION_FACTORY_DEFAULT;
+		private String contextFactoryName = Constants.PROP_JNDI_CONTEXT_FACTORY_DEFAULT;
+		private String destName = Constants.PROP_DESTINATION_NAME_DEFAULT;
+		private DestType destType = DestType.TOPIC;
+		private String destNameFormat = Constants.PROP_PROVIDER_TOPIC_FORMAT_DEFAULT;
+		private int connections = Constants.PROP_CLIENT_CONNECTIONS_DEFAULT;
+		private int sessions = Constants.PROP_CLIENT_SESSIONS_DEFAULT;
+		private int msgGoal = Constants.PROP_MESSAGE_COUNT_DEFAULT;
+		private String username = Constants.PROP_PROVIDER_USERNAME_DEFAULT;
+		private String password = Constants.PROP_PROVIDER_PASSWORD_DEFAULT;
+		private boolean uniqueDests = Constants.PROP_UNIQUE_DESTINATIONS_DEFAULT;
+		private boolean xa = Constants.PROP_UNIQUE_DESTINATIONS_DEFAULT;
+		private int reportInterval = Constants.PROP_REPORT_INTERVAL_SECONDS_DEFAULT;
+		private int warmup = Constants.PROP_REPORT_WARMUP_SECONDS_DEFAULT;
+		private int offset = Constants.PROP_REPORT_OFFSET_MSEC_DEFAULT;
+		private int txnSize = Constants.PROP_TRANSACTION_SIZE_DEFAULT;
+		private int duration = Constants.PROP_DURATION_SECONDS_DEFAULT;
+		private boolean debug = Constants.PROP_DEBUG_DEFAULT;
+		protected Builder() {}
 		
-		ClientBuilder()
-		{
-			
-		}
+		protected abstract T me();
 		
-		public ClientBuilder connections(int connections)
+		public T connections(int connections)
 		{
-			this.connections=connections;	return this;
+			this.connections=connections;	return me();
 		}
-		
-		public ClientBuilder sessions(int sessions)
+		public T sessions(int sessions)
 		{
-			this.sessions=sessions; return this;
+			this.sessions=sessions; return me();
 		}
-		
-		public ClientBuilder brokerURL(String url)
+		public T brokerURL(String url)
 		{
-			this.brokerURL=url; return this;
+			this.brokerURL=url; return me();
 		}
-		public ClientBuilder connectionFactory(String factoryName)
+		public T connectionFactory(String factoryName)
 		{
-			this.connectionFactoryName= factoryName; return this;
+			this.connectionFactoryName= factoryName; return me();
 		}
-		public ClientBuilder contextFactory(String contextFactory)
+		public T contextFactory(String contextFactory)
 		{
-			this.contextFactoryName = contextFactory; return this;
+			this.contextFactoryName = contextFactory; return me();
 		}
-		public ClientBuilder destination(String dest)
+		public T destination(String dest)
 		{
-			this.destination=dest; return this;
+			this.destName=dest; return me();
 		}
-		public ClientBuilder destType(String destType)
+		public T destType(DestType destType)
 		{
-			this.destType= destType; return this;
+			this.destType= destType; return me();
 		}
-		public ClientBuilder uniqueDests(boolean unique)
+		public T uniqueDests(boolean unique)
 		{
-			this.uniquedests=unique; return this;
+			this.uniqueDests=unique; return me();
 		}
-		public ClientBuilder flavor(String flavor)
+		public T provider(Provider provider)
 		{
-			this.flavor = flavor; return this;
+			this.provider = provider; return me();
 		}
-		public ClientBuilder messages(int msgGoal)
+		public T messages(int msgGoal)
 		{
-			this.msgGoal = msgGoal; return this;
+			this.msgGoal = msgGoal; return me();
 		}
-		
-		public ClientBuilder username(String username)
+		public T username(String username)
 		{
-			this.username=username; return this;
+			this.username=username; return me();
 		}
-		public ClientBuilder password(String password)
+		public T password(String password)
 		{
-			this.password = password; return this;
+			this.password = password; return me();
 		}
-		public ClientBuilder duration(int duration)
+		public T duration(int duration)
 		{
-			this.duration = duration; return this;
+			this.duration = duration; return me();
 		}
-		public ClientBuilder warmup(int warmup)
+		public T warmup(int warmup)
 		{
-			this.warmup = warmup; return this;
+			this.warmup = warmup; return me();
 		}
-		
-		@Override
-		public JMSClient build() {
-			// TODO Auto-generated method stub
-			return null;
+		public T reportInterval(int interval)
+		{
+			this.reportInterval = interval; return me();
 		}
-		
+		public T debug(boolean debug)
+		{
+			this.debug = debug; return me();
+		}
+		public T xa(boolean isXA) {
+			this.xa = isXA; return me();
+		}
+		public T transactionSize(int txnSize) {
+			this.txnSize = txnSize; return me();
+		}
+		public T offset(int offset) {
+			this.offset = offset; return me();
+		}				
 	}
 }

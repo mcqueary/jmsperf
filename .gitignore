@@ -8,3 +8,4 @@ activemq-data/
 bin/
 /target
 *.log
+*.log.[0-9]

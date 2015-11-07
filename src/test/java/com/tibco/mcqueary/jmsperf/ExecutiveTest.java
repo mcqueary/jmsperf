@@ -75,23 +75,23 @@ public class ExecutiveTest {
 
 		try {
 			
-			if (!testProducerIntegerOption("connections",JMSClient.PROP_CLIENT_CONNECTIONS))
-				fail(JMSClient.PROP_CLIENT_CONNECTIONS);
+			if (!testProducerIntegerOption("connections",Constants.PROP_CLIENT_CONNECTIONS))
+				fail(Constants.PROP_CLIENT_CONNECTIONS);
 			
-			if (!testProducerIntegerOption("sessions",JMSClient.PROP_CLIENT_SESSIONS))
-				fail(JMSClient.PROP_CLIENT_SESSIONS);
+			if (!testProducerIntegerOption("sessions",Constants.PROP_CLIENT_SESSIONS))
+				fail(Constants.PROP_CLIENT_SESSIONS);
 			
-			if (!testProducerIntegerOption("duration",JMSClient.PROP_DURATION_SECONDS))
-				fail(JMSClient.PROP_DURATION_SECONDS);
+			if (!testProducerIntegerOption("duration",Constants.PROP_DURATION_SECONDS))
+				fail(Constants.PROP_DURATION_SECONDS);
 
-			if (!this.testProducerIntegerOption("count", JMSClient.PROP_MESSAGE_COUNT))
-					fail(JMSClient.PROP_MESSAGE_COUNT);
+			if (!this.testProducerIntegerOption("count", Constants.PROP_MESSAGE_COUNT))
+					fail(Constants.PROP_MESSAGE_COUNT);
 
-			if (!this.testProducerIntegerOption("report", JMSClient.PROP_REPORT_INTERVAL_SECONDS))
-				fail(JMSClient.PROP_REPORT_INTERVAL_SECONDS);
+			if (!this.testProducerIntegerOption("report", Constants.PROP_REPORT_INTERVAL_SECONDS))
+				fail(Constants.PROP_REPORT_INTERVAL_SECONDS);
 
-			if (!this.testProducerIntegerOption("txnsize", JMSClient.PROP_TRANSACTION_SIZE))
-				fail(JMSClient.PROP_TRANSACTION_SIZE);
+			if (!this.testProducerIntegerOption("txnsize", Constants.PROP_TRANSACTION_SIZE))
+				fail(Constants.PROP_TRANSACTION_SIZE);
 
 		} catch (IllegalArgumentException | ConfigurationException
 				| NamingException e) {
@@ -106,23 +106,23 @@ public class ExecutiveTest {
 		try {
 			String[] args = { "--producer", "--uniquedests", Boolean.toString(true) };
 			Configuration config =  new Executive(args).getConfig();
-			if (!config.getBoolean(JMSClient.PROP_UNIQUE_DESTINATIONS)==true)
-				fail(JMSClient.PROP_UNIQUE_DESTINATIONS);
+			if (!config.getBoolean(Constants.PROP_UNIQUE_DESTINATIONS)==true)
+				fail(Constants.PROP_UNIQUE_DESTINATIONS);
 				
 			String[] args2 = { "--producer", "--xa", Boolean.toString(true) };
 			config =  new Executive(args2).getConfig();
-			if (!config.getBoolean(JMSClient.PROP_TRANSACTION_XA)==true)
-				fail(JMSClient.PROP_TRANSACTION_XA);
+			if (!config.getBoolean(Constants.PROP_TRANSACTION_XA)==true)
+				fail(Constants.PROP_TRANSACTION_XA);
 			
 			String[] args3 = { "--producer", "--timestamp", Boolean.toString(true) };
 			config =  new Executive(args3).getConfig();
-			if (!config.getBoolean(JMSProducer.PROP_PRODUCER_TIMESTAMP)==true)
-				fail(JMSProducer.PROP_PRODUCER_TIMESTAMP);
+			if (!config.getBoolean(Constants.PROP_PRODUCER_TIMESTAMP)==true)
+				fail(Constants.PROP_PRODUCER_TIMESTAMP);
 
 			String[] args4 = { "--producer", "--compress", Boolean.toString(true) };
 			config =  new Executive(args4).getConfig();
-			if (!config.getBoolean(JMSProducer.PROP_PRODUCER_COMPRESSION)==true)
-				fail(JMSProducer.PROP_PRODUCER_COMPRESSION);
+			if (!config.getBoolean(Constants.PROP_PRODUCER_COMPRESSION)==true)
+				fail(Constants.PROP_PRODUCER_COMPRESSION);
 
 		} catch (IllegalArgumentException e) {
 			fail(e.getMessage());
@@ -179,7 +179,7 @@ public class ExecutiveTest {
 			numProducerSessions=numDestinations;
 			numConsumerSessions=numDestinations;
 		}			
-		//Consumer settings
+		//AbstractConsumer settings
 		numConsumerConnections=100;
 		numConsumerSessions=numConsumerConnections;
 		numToConsume = numToProduce * numProducerSessions * numConsumerSessions;

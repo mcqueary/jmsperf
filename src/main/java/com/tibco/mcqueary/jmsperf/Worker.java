@@ -15,17 +15,17 @@ public interface Worker {
 	public void setup();
 	
 	/**
-	 * Signal the worker to begin execution
+	 * Signal the client to begin execution
 	 */
 	public void startup(); 
 
 	/**
-	 * Signal the worker to pause indefinitely.
+	 * Signal the client to pause indefinitely.
 	 */
 	public void pause();
 
 	/**
-	 * Signal the worker to pause for specific period
+	 * Signal the client to pause for specific period
 	 * 
 	 * @param msec Number of milliseconds to pause 
 	 */
@@ -33,12 +33,12 @@ public interface Worker {
 	public void pause(int msec);
 
 	/**
-	 *  Tells the worker to resume execution
+	 *  Tells the client to resume execution
 	 */
 	public void resume();
 
 	/**
-	 * Signal the worker to stop execution and reset state, without 
+	 * Signal the client to stop execution and reset state, without 
 	 * releasing system resources.
 	 * 
 	 */
@@ -50,12 +50,12 @@ public interface Worker {
 	public void end();
 
 	/**
-	 * @return TRUE if the worker is running. FALSE if the worker is stopped.
+	 * @return TRUE if the client is running. FALSE if the client is stopped.
 	 */
 	public boolean isRunning();
 
 	/**
-	 * @return TRUE if the worker is currently paused. FALSE if it is not.
+	 * @return TRUE if the client is currently paused. FALSE if it is not.
 	 */
 	public boolean isPaused();
 	

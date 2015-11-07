@@ -12,6 +12,8 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.configuration.PropertiesConfigurationLayout;
 
+import com.tibco.mcqueary.jmsperf.Constants.Provider;
+
 public class PropertyFileGenerator {
 
 	private final static String OUTPUT_DIRECTORY = "src/test/resources/";
@@ -73,10 +75,10 @@ System.err.println("==== beginning of defaultLayout ====");
 System.err.println("==== end of defaultLayout ====");			
 			PropertiesConfiguration tibcoConfig = new PropertiesConfiguration();
 			tibcoConfig.copy(templateConfig);
-			tibcoConfig.setProperty(JMSClient.PROP_PROVIDER, "TIBEMS");
-			tibcoConfig.setProperty(JMSClient.PROP_PROVIDER_URL, "tibjmsnaming://localhost:7222");
-			tibcoConfig.setProperty(JMSClient.PROP_PROVIDER_CONTEXT_FACTORY, 
-					"com.tibco.tibjms.naming.TibjmsInitialContextFactory");
+			tibcoConfig.setProperty(Constants.PROP_PROVIDER_NAME, Provider.TIBEMS);
+			tibcoConfig.setProperty(Constants.PROP_PROVIDER_URL, Provider.TIBEMS.url());
+			tibcoConfig.setProperty(Constants.PROP_PROVIDER_CONTEXT_FACTORY, 
+					Provider.TIBEMS.factory());
 			PropertiesConfigurationLayout tibcoLayout = 
 					new PropertiesConfigurationLayout(tibcoConfig,defaultLayout);
 			tibcoConfig.setLayout(tibcoLayout);
@@ -88,12 +90,12 @@ System.err.println("==== end of defaultLayout ====");
 			
 			PropertiesConfiguration kaazingConfig = new PropertiesConfiguration();
 			kaazingConfig.copy(templateConfig);
-			kaazingConfig.setProperty(JMSClient.PROP_PROVIDER, "KAAZING");
-			kaazingConfig.setProperty(JMSClient.PROP_PROVIDER_URL, "ws://localhost:8001/jms");
-			kaazingConfig.setProperty(JMSClient.PROP_PROVIDER_CONTEXT_FACTORY, 
-					"com.kaazing.gateway.jms.client.JmsInitialContextFactory");
-			kaazingConfig.setProperty(JMSClient.PROP_PROVIDER_TOPIC_FORMAT, "/topic/%s");
-			kaazingConfig.setProperty(JMSClient.PROP_PROVIDER_QUEUE_FORMAT, "/queue/%s");
+			kaazingConfig.setProperty(Constants.PROP_PROVIDER_NAME, Provider.KAAZING);
+			kaazingConfig.setProperty(Constants.PROP_PROVIDER_URL, Provider.KAAZING.url());
+			kaazingConfig.setProperty(Constants.PROP_PROVIDER_CONTEXT_FACTORY, 
+					Provider.KAAZING.factory());
+			kaazingConfig.setProperty(Constants.PROP_PROVIDER_TOPIC_FORMAT, "/topic/%s");
+			kaazingConfig.setProperty(Constants.PROP_PROVIDER_QUEUE_FORMAT, "/queue/%s");
 			PropertiesConfigurationLayout kaazingLayout = 
 					new PropertiesConfigurationLayout(kaazingConfig,defaultLayout);
 			kaazingConfig.setLayout(kaazingLayout);
@@ -105,10 +107,10 @@ System.err.println("==== end of defaultLayout ====");
 						
 			PropertiesConfiguration activemqConfig = new PropertiesConfiguration();
 			activemqConfig.copy(templateConfig);
-			activemqConfig.setProperty(JMSClient.PROP_PROVIDER, "ACTIVEMQ");
-			activemqConfig.setProperty(JMSClient.PROP_PROVIDER_URL, "tcp://localhost:61616");
-			activemqConfig.setProperty(JMSClient.PROP_PROVIDER_CONTEXT_FACTORY, 
-					"org.apache.activemq.jndi.ActiveMQInitialContextFactory");
+			activemqConfig.setProperty(Constants.PROP_PROVIDER_NAME, Provider.ACTIVEMQ);
+			activemqConfig.setProperty(Constants.PROP_PROVIDER_URL, Provider.ACTIVEMQ.url());
+			activemqConfig.setProperty(Constants.PROP_PROVIDER_CONTEXT_FACTORY, 
+					Provider.ACTIVEMQ.factory());
 			PropertiesConfigurationLayout activemqLayout = 
 					new PropertiesConfigurationLayout(activemqConfig,defaultLayout);
 			activemqConfig.setLayout(activemqLayout);

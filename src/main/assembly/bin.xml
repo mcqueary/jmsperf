@@ -18,6 +18,7 @@
 			<directory>src/main/resources</directory>
 			<outputDirectory>conf</outputDirectory>
 			<includes>
+				<include>log4j.properties</include>
 				<include>*.xml</include>
 			</includes>
 		</fileSet>

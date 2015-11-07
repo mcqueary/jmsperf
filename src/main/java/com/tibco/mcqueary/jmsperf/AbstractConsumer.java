@@ -1,5 +1,6 @@
 package com.tibco.mcqueary.jmsperf;
 
+import java.io.IOException;
 import java.lang.management.MemoryUsage;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -17,318 +18,137 @@ import javax.jms.Topic;
 import javax.naming.NamingException;
 import javax.transaction.xa.XAResource;
 
-import org.apache.commons.collections4.BidiMap;
-import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 
-import static com.tibco.mcqueary.jmsperf.Executive.PFX;
+import static com.tibco.mcqueary.jmsperf.Constants.*;
 
-public class JMSConsumer extends JMSClient {
-	
-	public static final String PROP_CONSUMER_SELECTOR = PFX
-			+ "consumer.selector";
-	public static final String PROP_CONSUMER_DURABLE = PFX
-			+ "consumer.durable.name";
-	public static final String PROP_CONSUMER_ACK_MODE = PFX
-			+ "consumer.acknowledgement.mode";
-	
-	public class SessionWorker implements Runnable {
-		private int sessionNum;
-		private Connection connection = null;
-		private String destName = null;
-		private int ackMode = -1;
-		private boolean transacted = false;
-		private String selector = null;
-		private String durable = null;
-		private Destination destination;
-		private MessageConsumer msgConsumer = null;
-		private Session session=null;
-		XAResource xaResource = null;
-		JMSPerfTxnHelper txnHelper = getPerfTxnHelper(xa);
-		private int nProcessedThisThread=0;
-		
-		SessionWorker(Connection connection, String destName, int ackMode,
-				boolean transacted, String selector, String durable, int sessionNum) {
-			this.sessionNum=sessionNum;
-			this.connection = connection;
-			this.destName = destName;
-			this.ackMode = ackMode;
-			this.transacted=transacted;
-			this.selector=selector;
-			this.durable = durable;
-			
-			// create a session
-			try {
-				session = this.connection.createSession(this.transacted, this.ackMode);
-	
-				logger.trace("Created session (" + this.transacted + ", " 
-						+ ackModes.inverseBidiMap().get(this.ackMode) + ")");
-	
-				//TODO remove global
-				if (uniqueDests)
-					this.destName=this.destName + "." + this.sessionNum;
-					
-				if (destType.equals(ConfigHandler.DestType.TOPIC)) {
-					this.destination = session.createTopic(this.destName);
-				} else { // QUEUE
-					this.destination = session.createQueue(this.destName);
-				}
-				logger.trace("Created " + destType + " " + this.destName);
-	
-				// create the consumer
-				if (this.durable == null)
-					msgConsumer = session.createConsumer(this.destination,
-							this.selector);
-				else
-					msgConsumer = session.createDurableSubscriber(
-							(Topic) this.destination, this.durable,
-							this.selector, false);
-				logger.trace("Created consumer on " + this.destination);
-			
-			} catch (JMSException e) {
-				logger.debug("Exception in SessionWorker constructor:", e);
-			}
-		}
-
-		private int getNumProcessed()
-		{
-			return this.nProcessedThisThread;
-		}
-		
-		public void cleanup()
-		{
-			try {
-				// commit any remaining messages
-				if (txnSize > 0) {
-						txnHelper.commitTx(this.xaResource, this.session);
-				}
-				
-				if (this.durable != null && this.session !=null)
-				{
-					logger.trace("Unsubscribing durable: " + this.durable);
-					this.session.unsubscribe(this.durable);
-				}
-
-				logger.trace("Closing consumer.");
-				if (this.msgConsumer!=null)
-					this.msgConsumer.close();
-
-				if (session != null)
-				{
-					logger.trace("Closing session.");
-					this.session.close();
-				}
-				
-			} catch (JMSException e)
-			{
-				logger.error("Exception during session cleanup:", e);
-			}
-		}
-		
-		@Override
-		public void run() {
-			boolean started = false;
-			try {
-				/*
-				 * unique topic destinations: total should be msgGoal *
-				 * dests(sessions) unique queue destinations: total should be
-				 * msgGoal * dests(sessions) single topic destination: total
-				 * should be msgGoal * dests(sessions) single queue destination:
-				 * total should be msgGoal
-				 */
-
-//				while (!done.get() && (currMsgCount.get() < msgGoal))
-				while (!done)
-				{
-					// a no-op for local txns
-					// txnHelper.beginTx(xaResource);
-
-					Message msg = msgConsumer.receive();
-					if (msg == null)
-					{
-						logger.debug("NULL msg received");
-						break;
-					}
-					if (!started)
-					{
-						reportManager.startTiming();
-						started=true;
-						logger.trace("Started processing");
-	 				}
-					currMsgCount.incrementAndGet();
-					nProcessedThisThread++;
-					
-					recordLatency(msg);
-					
-					/**
-					 * Post-process hook for overriding. Default is no-op.
-					 */
-					
-//					statList.put(currMsgCount.get(),new StatRecord(msg, this.connection, this.sessionNum));
-					
-					postProcess(msg);
-
-					// commit the transaction if necessary
-					if ((txnSize > 0) && (currMsgCount.get() % txnSize == 0))
-						txnHelper.commitTx(xaResource, session);
-
-					/**
-					 * If explicit client acknowledgement (or subclass
-					 * overrides) are required
-					 */
-
-					if ((this.ackMode != Session.AUTO_ACKNOWLEDGE)
-							&& (this.ackMode != Session.DUPS_OK_ACKNOWLEDGE)) {
-						// Allows for provider-specific ack modes
-						acknowledge(msg, this.ackMode);
-					}									
-				} // while loop
-				//done.set(true);
-				logger.debug("Message goal reached. This session (#"+sessionNum+") processed "+ nProcessedThisThread);
-			} catch (JMSException e) {
-				Exception le = e.getLinkedException();
-				if (le==null || !(le instanceof InterruptedException)) {
-					logger.error("Exception encountered in consumer thread", e);
-				}
-			} catch (OutOfMemoryError e) {
-				long max = reportManager.getMaxMemory();
-				long used = reportManager.getUsedMemory();
-				logger.error("OutOfMemory error in consumer thread (" + used
-						+ "M/" + max + "M)", e);
-			} finally {
-				logger.trace("Thread exiting after " + currMsgCount.get()
-						+ " total messages received (" + nProcessedThisThread + " this thread)");
-			}
-		}
-	}
-
-	public static BidiMap<String, Integer> ackModes = new DualHashBidiMap<String, Integer>();
+public abstract class AbstractConsumer extends Client implements Runnable {
 
 	// Class-specific fields/parameters
-	private String selector = null;
-	private Integer ackMode = null;
-	private String subscriptionName = null;
-	private String durableName = null;
-	
+	protected String selector = null;
+	protected AckMode ackMode = Constants.PROP_CONSUMER_ACK_MODE_DEFAULT;
+	protected String subscriptionName = null;
+	protected String durableName = null;
+	protected boolean async = false;
+
 	// variables
-	private AtomicLong currMsgCount = new AtomicLong(0);
-	private AtomicLong latencyTotal = new AtomicLong(0);
-	private AtomicLong elapsed = new AtomicLong(0);
-	private boolean done=false;
-	private ReportManager reportManager;
+	// protected AtomicLong currMsgCount = new AtomicLong(0);
+	protected AtomicLong latencyTotal = new AtomicLong(0);
+	protected AtomicLong elapsed = new AtomicLong(0);
+	protected AtomicLong latencySamples = new AtomicLong(0);
+
+	protected AtomicBoolean done = new AtomicBoolean(false);
+	protected ReportManager reportManager;
 
 	/**
 	 * Constructor
 	 * 
-	 * @param inputConfig - A PropertiesConfiguration object describing the 
-	 * default + command-line configuration
+	 * @param inputConfig
+	 *            - A PropertiesConfiguration object describing the default +
+	 *            command-line configuration
 	 * @throws ConfigurationException
-	 * @throws NamingException 
-	 * @throws IllegalArgumentException 
+	 * @throws NamingException
+	 * @throws IllegalArgumentException
 	 */
-	public JMSConsumer(PropertiesConfiguration inputConfig)
+	public AbstractConsumer(PropertiesConfiguration inputConfig)
 			throws IllegalArgumentException, NamingException {
 		super(inputConfig);
 
-		ackModes.put("AUTO_ACKNOWLEDGE", Session.AUTO_ACKNOWLEDGE);
-		ackModes.put("CLIENT_ACKNOWLEDGE", Session.CLIENT_ACKNOWLEDGE);
-		ackModes.put("DUPS_OK_ACKNOWLEDGE", Session.DUPS_OK_ACKNOWLEDGE);
-
 		try {
-		this.selector = config.getString(PROP_CONSUMER_SELECTOR);
-		this.ackMode = ackModes.get(config
-				.getString(PROP_CONSUMER_ACK_MODE));
-		this.durableName = config.getString(PROP_CONSUMER_DURABLE);
-		} catch (ConversionException ce)
-		{
+			this.selector = config.getString(PROP_CONSUMER_SELECTOR, null);
+
+			String ackModeString = config.getString(PROP_CONSUMER_ACK_MODE,
+					PROP_CONSUMER_ACK_MODE_DEFAULT.name());
+			this.ackMode = AckMode.valueOf(ackModeString);
+
+			this.durableName = config.getString(PROP_CONSUMER_DURABLE, null);
+		} catch (ConversionException ce) {
 			throw new IllegalArgumentException(ce.getMessage(), ce);
 		}
-		printConsoleBanner();
 	}
 
-	public JMSConsumer(Builder builder) {
+	public AbstractConsumer(Builder builder) {
 		super(builder);
+
+		this.selector = builder.selector;
+		this.durableName = builder.durable;
+		this.ackMode = builder.ackMode;
 	}
 
-	protected synchronized void recordLatency(Message msg) throws JMSException
-	{
-		long msgTimestamp = msg.getJMSTimestamp();
-		long currTime = System.currentTimeMillis();
-		if (msgTimestamp !=0 )
-		{
-			this.latencyTotal.addAndGet(currTime-msgTimestamp);
-		}
-	}
-	
 	protected void acknowledge(Message msg, int mode) throws JMSException {
 		msg.acknowledge();
 	}
 
-	protected void postProcess(Message msg) throws JMSException {
+	protected void process(Message msg) throws JMSException, IOException {
 		// No-op. Override this to do provider-specific post processing
-	
+
 	}
 
 	@Override
-	public void startup() {
+	public void setup() {
 		try {
-			createConnectionFactoryAndConnections();
+			createConnections();
 
 			// create the reporting thread
-			reportManager = new ReportManager(reportInterval, msgGoal);
-			Thread reportingThread = new WorkerThread(reportManager, "ReportingThread");
+			reportManager = new ReportManager(reportInterval, msgGoal,
+					sessions, warmup, offset);
+			Thread reportingThread = new WorkerThread(reportManager,
+					"ReportingThread");
 			reportingThread.start();
 
-			ThreadPoolExecutor pool = (ThreadPoolExecutor)Executors.newFixedThreadPool(sessions);
-			pool.setThreadFactory(new JMSWorkerThreadFactory("JMSConsumerThread"));
+			ThreadPoolExecutor pool = (ThreadPoolExecutor) Executors
+					.newFixedThreadPool(sessions);
+			pool.setThreadFactory(new JMSWorkerThreadFactory(
+					"JMSConsumerThread"));
 			pool.prestartAllCoreThreads();
 			// create the consumer session threads
 
-			/**
-			 * TODO MUST make the SessionWorker derive its own destination name (again)
-			 */
-
 			JMSWorkerThread.setDebug(false);
 
-			SessionWorker[] workers = new SessionWorker[this.sessions];
-			for (int i=0; i < this.sessions; i++)
-			{
-				workers[i] = new SessionWorker(getConnection(), destName,
-						this.ackMode, this.txnSize > 0, this.selector,
-						this.subscriptionName, i);
-				pool.execute(workers[i]);
-				if ((i>=1000) && (i % 1000) == 0)
-					logger.info(pool.getActiveCount() + " of " + this.sessions + " session threads created.");
+			// SessionWorker[] workers = new SessionWorker[this.sessions];
+
+			String intSpec = "%" + String.valueOf(this.sessions).length() + "d";
+			String format = intSpec + "/" + this.sessions
+					+ " session threads created.";
+
+			for (int i = 0; i < this.sessions; i++) {
+				// workers[i] = new SessionWorker(getConnection(), destName,
+				// this.ackMode, this.txnSize > 0, this.selector,
+				// this.subscriptionName, i);
+				pool.execute(this);
+				if ((i != 0) && (i % 1000) == 0)
+					logger.info(String.format(format, i));
 			}
-			while (pool.getActiveCount() < this.sessions)
-			{
+			while (pool.getActiveCount() < this.sessions) {
 				logger.info("Waiting for all sessions to activate.");
 				Thread.sleep(1000);
 			}
-			logger.info(pool.getActiveCount() + " of " + this.sessions + " session threads created.");
+			logger.info(String.format(format, pool.getActiveCount()));
 			if (duration > 0)
-				logger.info("Waiting " + duration + " sec for sessions to complete.");
+				logger.info("Waiting " + duration
+						+ " sec for sessions to complete.");
 			else
 				logger.info("Waiting for sessions to complete.");
 
-			while ( (elapsed.get() < duration) && (currMsgCount.get() < msgGoal)) 
-			{
-				int sleepSeconds=1;
-				Thread.sleep(sleepSeconds*1000);
+			while (((duration == 0) || (elapsed.get() < duration))
+					&& ((msgGoal == 0) || (reportManager.getMsgCount() < msgGoal))) {
+				int sleepSeconds = 1;
+				Thread.sleep(sleepSeconds * 1000);
 				elapsed.addAndGet(sleepSeconds);
 			}
-			
-			done=true;
 
-			for (int i=0; i<this.sessions; i++)
-			{
-				logger.debug("Cleaning up session[" + i + "], which processed "
-						+ workers[i].getNumProcessed() + " msgs");
-				workers[i].cleanup();
-			}
-			
+			done.set(true);
+			reportManager.stopTiming();
+
+			// for (int i=0; i<this.sessions; i++)
+			// {
+			// logger.debug("Cleaning up session[" + i + "], which processed "
+			// + workers[i].getNumProcessed() + " msgs");
+			// workers[i].cleanup();
+			// }
+
 			logger.debug("Shutting down active threads.");
 			logger.debug("poolSize=" + pool.getPoolSize());
 			logger.debug("corePoolSize=" + pool.getCorePoolSize());
@@ -336,9 +156,10 @@ public class JMSConsumer extends JMSClient {
 			logger.debug("largestPoolSize=" + pool.getLargestPoolSize());
 			logger.debug("taskCount=" + pool.getTaskCount());
 			logger.debug("completedTasks=" + pool.getCompletedTaskCount());
-			logger.debug("keepAliveTime=" + pool.getKeepAliveTime(TimeUnit.MILLISECONDS)+"msec");
-			
-//			pool.shutdownNow();
+			logger.debug("keepAliveTime="
+					+ pool.getKeepAliveTime(TimeUnit.MILLISECONDS) + "msec");
+
+			// pool.shutdownNow();
 
 			logger.debug("Shutting down reporting thread");
 			reportingThread.interrupt();
@@ -346,9 +167,9 @@ public class JMSConsumer extends JMSClient {
 			// close connections
 			logger.debug("Cleaning up connections");
 			cleanupConnections();
-			
+
 		} catch (NamingException | JMSException e) {
-			logger.error(e.getClass().getName() + " during setup:", e);
+			logger.error(e.getMessage());
 		} catch (OutOfMemoryError e) {
 			long maxMemory = reportManager.getMaxMemory();
 			long usedMemory = reportManager.getUsedMemory();
@@ -358,234 +179,180 @@ public class JMSConsumer extends JMSClient {
 			logger.error("OutOfMemoryError during setup:", e);
 		} catch (Exception e) {
 			logger.error("Unexpected exception during setup:", e);
-		}
-		finally
-		{
+		} finally {
 			logger.info("Done.");
 		}
 	}
 
-	public class ReportManager implements Runnable {
-		private MemoryUsage heapUsage = null;
+	public void run() {
 
-		private long interval = 0;
-		private long startTime = 0;
-		private long stopTime = 0;
-		private long lastSnapshotMsgCount = 0;
-		private long msgLimit = 0;
-		private boolean started = false;
+		long sessionNum = Thread.currentThread().getId();
+		Connection connection = null;
+		Destination destination = null;
+		MessageConsumer msgConsumer = null;
+		Session session = null;
+		XAResource xaResource = null;
+		JMSPerfTxnHelper txnHelper = getPerfTxnHelper(xa);
+		int nProcessedThisThread = 0;
 
-		ReportManager(int howOften, long count) {
-			this.interval = howOften;
-			this.msgLimit = count;
-		}
+		try {
+			/*
+			 * unique topic destinations: total should be msgGoal *
+			 * dests(sessions) unique queue destinations: total should be
+			 * msgGoal * dests(sessions) single topic destination: total should
+			 * be msgGoal * dests(sessions) single queue destination: total
+			 * should be msgGoal
+			 */
 
-		protected synchronized void startTiming() {
-			if (!started) {
-				started=true;
-				this.startTime = System.currentTimeMillis();
-				logger.debug("Timing started");
+			// Get a connection from the "pool"
+			connection = getConnection();
+
+			// create a session
+			session = connection.createSession(this.transacted,
+					this.ackMode.value());
+
+			logger.trace("Created session (" + this.transacted + ", " + ackMode
+					+ ")");
+
+			if (uniqueDests)
+				this.destName = this.destName + "." + sessionNum;
+
+			switch (destType) {
+			case TOPIC:
+				destination = session.createTopic(this.destName);
+				break;
+			case QUEUE:
+				destination = session.createQueue(this.destName);
+				break;
+			default:
+				break;
 			}
-		}
 
-		protected synchronized void stopTiming() {
-			if (started)
-			{
-				started=false;
-				this.stopTime=System.currentTimeMillis();
- 				finalStats();
- 				reportOverallPerformance();
-			}
-		}
+			logger.trace("Created " + destType + " " + this.destName);
 
-		protected synchronized void finalStats() {
-			// report final stats
-			long elapsedSecs = (this.stopTime - this.startTime) / 1000;
-			if (currMsgCount.get() > 0) {
-				this.reportIntervalStatus(elapsedSecs);
-			}
-		}
+			// create the consumer
+			if (this.durableName == null) {
+				msgConsumer = session
+						.createConsumer(destination, this.selector);
+			} else
+				msgConsumer = session.createDurableSubscriber(
+						(Topic) destination, this.durableName, this.selector,
+						false);
+			logger.trace("Created consumer on " + destination);
 
-		protected synchronized long getMaxMemory() {
-			this.heapUsage = memoryBean.getHeapMemoryUsage();
-			return (heapUsage.getMax() / MEGABYTE);
-		}
+			// Tracks whether we have looped at least once yet
+			boolean started = false;
 
-		protected synchronized long getUsedMemory() {
-			this.heapUsage = memoryBean.getHeapMemoryUsage();
-			return (heapUsage.getUsed() / MEGABYTE);
-		}
+			while (!done.get()) {
+				// a no-op for local txns
+				// txnHelper.beginTx(xaResource);
 
-		protected synchronized void reportIntervalStatus(long elapsed) {
-			long msgsThisInterval = currMsgCount.get() - lastSnapshotMsgCount;
-			long totalElapsed = System.currentTimeMillis() - this.startTime; 
-			double averageLatency = (latencyTotal.get()/currMsgCount.get());
-			if ((msgsThisInterval > 0) && (elapsed > 0)) {
-				long currMsgRate = (long) (msgsThisInterval / elapsed);
-				long msgs = currMsgCount.get();
-				long max = msgLimit;
-				long cumulative = msgs/(totalElapsed / 1000);
-				logger.info(String.format("%8d", msgs) 
-						+ "/" 
-						+ String.format("%8d",max)
-						+ " msgs rcvd (" + currMsgRate + " msg/sec), " 
-						+ cumulative + " msg/sec cumulative. latency="
-						+ String.format("%3.2f", averageLatency) + "ms "
-						+ getUsedMemory() + "MB/" + getMaxMemory() + "MB");
-				lastSnapshotMsgCount = currMsgCount.get();
-			} else {
-				logger.debug("Reporting interval elapsed but nothing to report");
-			}
-		}
-
-		/**
-		 * Get the performance results.
-		 */
-		protected synchronized void reportOverallPerformance() {
-			long elapsed = this.stopTime - this.startTime;
-			if (elapsed > 0) {
-				double seconds = elapsed / 1000.0;
-				int perf = (int) ((currMsgCount.get() * 1000.0) / elapsed);
-				logger.info(currMsgCount + " messages took " + seconds
-						+ " seconds, performance is " + perf + " msg/sec "
-						+ "(" + perf / sessions + " msg/sec/session)");
-			} else {
-				logger.info("interval too short to calculate a message rate");
-			}
-		}
-
-		public void run() {
-			logger.trace("Reporting manager started.");
-			while (currMsgCount.get() == 0) {
-
-			}
-			long start = System.currentTimeMillis();
-			while (!done) {
-				long current=System.currentTimeMillis();
-				long elapsed=(current-start)/1000;
-				if (elapsed==this.interval)
-				{
-					this.reportIntervalStatus(elapsed);
-					start=current;
+				Message msg = msgConsumer.receive();
+				if (msg == null) {
+					logger.debug("NULL msg received");
+					break;
 				}
+				if (!started) {
+					reportManager.startTiming();
+					started = true;
+					logger.trace("Started processing");
+				}
+				// currMsgCount.incrementAndGet();
+				reportManager.incrementMsgCount();
+				nProcessedThisThread++;
+
+				if (elapsed.get() > warmup)
+					reportManager.recordLatency(0L, msg);
+
+				/**
+				 * Post-process hook for overriding. Default is no-op.
+				 */
+				process(msg);
+
+				// statList.put(currMsgCount.get(),new StatRecord(msg,
+				// this.connection, this.sessionNum));
+
+				// commit the transaction if necessary
+				if ((txnSize > 0)
+						&& (reportManager.getMsgCount() % txnSize == 0))
+					txnHelper.commitTx(xaResource, session);
+
+				/**
+				 * If explicit client acknowledgement (or subclass overrides)
+				 * are required
+				 */
+
+				if ((this.ackMode != AckMode.AUTO_ACKNOWLEDGE)
+						&& (this.ackMode != AckMode.DUPS_OK_ACKNOWLEDGE)) {
+					// Allows for provider-specific ack modes
+					acknowledge(msg, this.ackMode.value());
+				}
+			} // while loop
+				// done.set(true);
+			logger.debug("Message goal reached. This session (#" + sessionNum
+					+ ") processed " + nProcessedThisThread);
+		} catch (JMSException e) {
+			e.printStackTrace();
+			Exception le = e.getLinkedException();
+			if (le == null || !(le instanceof InterruptedException)) {
+				logger.error("Exception encountered in consumer thread: "
+						+ e.getMessage());
+				logger.error(e);
+				logger.trace(e);
 			}
-			this.stopTiming();
+		} catch (OutOfMemoryError e) {
+			long max = reportManager.getMaxMemory();
+			long used = reportManager.getUsedMemory();
+			logger.error("OutOfMemory error in consumer thread (" + used + "M/"
+					+ max + "M)", e);
+		} catch (IOException e) {
+			logger.error(e.getMessage());
+		} finally {
+			logger.trace("Thread exiting after " + reportManager.getMsgCount()
+					+ " total messages received (" + nProcessedThisThread
+					+ " this thread)");
 		}
-	}
+	} // run()
 
-	@Override
-	public synchronized void pause() {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void pause(int msec) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void resume() {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void reset() {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void end() {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public boolean isRunning() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public boolean isPaused() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public void setup() {
-		// TODO Auto-generated method stub
-
-	}
-
-	public void printConsoleBanner()
-	{
+	public void printConsoleBanner() {
 		// print parameters
-		System.err.println();
-		System.err
-				.println("------------------------------------------------------------------------");
-		String className = this.getClass().getName();
-		className = className.substring((className.lastIndexOf('.') + 1));
-		System.err.println(className);
-		System.err
-				.println("------------------------------------------------------------------------");
-		if (flavor != null)
-			System.err.println("Broker Flavor................ " + flavor);
-		System.err.println("Broker URL................... " + getBrokerURL());
-		System.err.println("Initial Context Factory...... "
-				+ contextFactoryName);
-		System.err.println("Connection Factory........... "
-				+ connectionFactoryName);
-		System.err.println("User......................... " + username);
-		System.err.println("Destination.................. " + "(" + destType
-				+ ") " + destName);
+
+		printConsoleBannerHeader();
+		printCommonSettings();
+		printSpecificSettings();
+		printConsoleBannerFooter();
+	}
+
+	public void printSpecificSettings() {
 		if (durableName != null)
-			System.err.println("Durable...................... "
-					+ (durableName != null));
-		System.err.println("Consumer Connections......... " + connections);
-		System.err.println("Consumer Sessions............ " + sessions);
-		System.err.println("Unique Destinations.......... " + uniqueDests);
-		System.err.println("Count........................ " + msgGoal);
-		System.err.println("Duration..................... " + duration);
-		System.err.println("Ack Mode..................... "
-				+ ackModes.inverseBidiMap().get(this.ackMode));
+			System.err.println("Durable...................... " + durableName);
+		System.err.println("Report Interval.............. " + reportInterval);
+		System.err.println("Warmup Interval.............. " + warmup);
+		System.err.println("Ack Mode..................... " + ackMode);
 		if (selector != null)
 			System.err.println("Selector..................... " + selector);
-		System.err.println("XA........................... " + xa);
-		if (getTxnSize() > 0)
-			System.err.println("Transaction Size............. " + getTxnSize());
-		System.err
-				.println("------------------------------------------------------------------------");
-		System.err.println();
 	}
-	
-	public static class Builder extends JMSClient.ClientBuilder
-	{
-		private String selector;
-		private String durable;
-		private String ackModeString;
 
-		public Builder selector(String selector)
-		{
-			this.selector = selector;	return this;
+	public static abstract class Builder<T extends Client.Builder<T>> extends Client.Builder<T>
+	{
+		private String selector = null;
+		private String durable = null;
+		private AckMode ackMode = PROP_CONSUMER_ACK_MODE_DEFAULT;
+
+		@Override
+		protected abstract T me();
+
+		public T selector(String selector) {
+			this.selector = selector; return me();
 		}
-		
-		public Builder durable(String durable)
-		{
-			this.durable = durable;		return this;
+
+		public T durable(String durable) {
+			this.durable = durable;   return me();
 		}
-		
-		public Builder ackMode(String ackMode)
-		{
-			this.ackModeString=ackMode;	return this;
+
+		public T ackMode(AckMode ackMode) {
+			this.ackMode = ackMode;   return me();
 		}
-		
-		public JMSConsumer build()
-		{
-			return new JMSConsumer(this);
-		}
+
 	}
 }

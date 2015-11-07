@@ -230,14 +230,14 @@ public class ConfigHandlerTest {
 		};
 		PropertiesConfiguration consumerConfig = handler.parseClientConfiguration(args);
 		assertNotNull(consumerConfig);
-		assertEquals(numConns, consumerConfig.getInt(JMSClient.PROP_CLIENT_CONNECTIONS));
-		assertEquals(numSess, consumerConfig.getInt(JMSClient.PROP_CLIENT_SESSIONS));
-		assertEquals(reportInterval, consumerConfig.getInt(JMSClient.PROP_REPORT_INTERVAL_SECONDS));
-		assertEquals(reportWarmup, consumerConfig.getInt(JMSClient.PROP_REPORT_WARMUP_SECONDS));
-		assertEquals("topic", consumerConfig.getString(JMSClient.PROP_DESTINATION_TYPE));
-		assertEquals("foo", consumerConfig.getString(JMSClient.PROP_DESTINATION_NAME));
+		assertEquals(numConns, consumerConfig.getInt(Constants.PROP_CLIENT_CONNECTIONS));
+		assertEquals(numSess, consumerConfig.getInt(Constants.PROP_CLIENT_SESSIONS));
+		assertEquals(reportInterval, consumerConfig.getInt(Constants.PROP_REPORT_INTERVAL_SECONDS));
+		assertEquals(reportWarmup, consumerConfig.getInt(Constants.PROP_REPORT_WARMUP_SECONDS));
+		assertEquals("topic", consumerConfig.getString(Constants.PROP_DESTINATION_TYPE));
+		assertEquals("foo", consumerConfig.getString(Constants.PROP_DESTINATION_NAME));
 		
-		System.out.println(handler.getConfigString("Consumer configuration: ", consumerConfig));
+		System.out.println(handler.getConfigString("AbstractConsumer configuration: ", consumerConfig));
 	}
 
 	/**
@@ -245,7 +245,8 @@ public class ConfigHandlerTest {
 	 */
 	@Test
 	public final void testUsage() {
-		fail("Not yet implemented"); // TODO
+		ConfigHandler handler = ConfigHandler.instance("executive");
+		handler.usage();
 	}
 
 	/**

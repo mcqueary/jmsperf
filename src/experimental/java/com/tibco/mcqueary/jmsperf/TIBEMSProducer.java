@@ -9,17 +9,16 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.naming.NamingException;
 
-import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
-
+import static com.tibco.mcqueary.jmsperf.Constants.*;
 /**
  * @author Larry McQueary
  *
  */
-public class TIBEMSProducer extends JMSProducer {
+public class TIBEMSProducer extends Producer {
 
-	static final Flavor flavor = Flavor.TIBEMS;
+	static final Provider provider = Provider.TIBEMS;
 
 	final static int TIBCO_RELIABLE = 22;
 
@@ -33,7 +32,7 @@ public class TIBEMSProducer extends JMSProducer {
 	public TIBEMSProducer(PropertiesConfiguration input) throws NoSuchElementException, ConfigurationException, IllegalArgumentException, NamingException {
 		super(input);
 		// TODO Auto-generated constructor stub
-	    deliveryModes.put("TIBCO_RELIABLE", TIBCO_RELIABLE);
+//	    deliveryModes.put("TIBCO_RELIABLE", TIBCO_RELIABLE);
 
 	}
 	

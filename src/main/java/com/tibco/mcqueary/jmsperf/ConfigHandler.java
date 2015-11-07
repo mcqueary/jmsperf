@@ -2,6 +2,7 @@ package com.tibco.mcqueary.jmsperf;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -11,6 +12,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -24,6 +27,12 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.log4j.Logger;
 
+import com.tibco.mcqueary.jmsperf.Constants.DeliveryMode;
+import com.tibco.mcqueary.jmsperf.Constants.DestType;
+import com.tibco.mcqueary.jmsperf.Constants.Provider;
+
+import static com.tibco.mcqueary.jmsperf.Constants.*;
+
 /**
  * @author Larry McQueary
  *
@@ -32,13 +41,17 @@ public class ConfigHandler implements Comparator<Option> {
 	protected static final String PROJECT = "jmsperf";
 	protected static final String PROJECT_PROPERTIES = PROJECT + ".properties";
 
+	public static final String OPTION_PREFIX = "-";
 	public static final String KEY_EXECUTIVE = "executive";
 	public static final String KEY_CONSUMER = "consumer";
 	public static final String KEY_PRODUCER = "producer";
+	public static final String KEY_REQUESTOR = "requestor";
+	public static final String KEY_RESPONDER = "responder";
 	public static final String KEY_COMMON = "common";
 	public static final String KEY_ALL = "all";
 
 	public static final String OPT_CONFIG = "config";
+	public static final String OPT_PROVIDER = "provider";
 	public static final String OPT_TOPIC = "topic";
 	public static final String OPT_QUEUE = "queue";
 
@@ -64,11 +77,6 @@ public class ConfigHandler implements Comparator<Option> {
 	private Options options = null;
 	private ArrayList<String> propNames = null;
 	private String instName = null;
-
-	public final class DestType {
-		public static final String TOPIC = "topic";
-		public static final String QUEUE = "queue";
-	};
 
 	// maps an option name to its corresponding property name.
 	private Map<String, String> optionNamesMap = new HashMap<String, String>();
@@ -296,7 +304,7 @@ public class ConfigHandler implements Comparator<Option> {
 	private Option createOption(String propertyName) {
 		Option option = null;
 
-		String defaultValue = projectConfig.getString(propertyName);
+//		String defaultValue = projectConfig.getString(propertyName);
 		String opt = projectConfig.getString(propertyName + "." + OPT);
 		String longOpt = projectConfig.getString(propertyName + "." + LONGOPT);
 		String description = projectConfig.getString(propertyName + "."
@@ -309,7 +317,6 @@ public class ConfigHandler implements Comparator<Option> {
 				+ REQUIRED, false);
 		String className = projectConfig.getString(propertyName + "." + TYPE,
 				"java.lang.String");
-		Object typeObject = null;
 
 		option = new Option(longOpt, hasArg, description);
 		if (hasArg) {
@@ -320,16 +327,6 @@ public class ConfigHandler implements Comparator<Option> {
 		}
 		option.setRequired(required);
 
-		if (className != null && longOpt != null) {
-			if (className.equals(Boolean.class.getName())) {
-				typeObject = new Boolean(defaultValue);
-			} else if (className.equals(Integer.class.getName())) {
-				typeObject = new Integer(defaultValue);
-			}
-			if (typeObject != null) {
-				option.setType(typeObject);
-			}
-		}
 		logger.debug("Created option for inst=" + instName + " property "
 				+ propertyName + ": " + className + "," + opt + "," + longOpt
 				+ "," + hasArg + "," + argName + "," + description);
@@ -337,6 +334,7 @@ public class ConfigHandler implements Comparator<Option> {
 		return option;
 	}
 
+	@SuppressWarnings("unchecked")
 	public void printOptions(String msg, Options opts) {
 		for (Iterator<Option> it = opts.getOptions().iterator(); it.hasNext();)
 		{
@@ -348,11 +346,6 @@ public class ConfigHandler implements Comparator<Option> {
 
 	public String getPropertyName(Option option) {
 		return optionNamesMap.get(option.getOpt());
-	}
-
-	public int getHelpIndex(Option opt) {
-		int index = projectConfig.getInt(opt.getOpt() + ".index", 0);
-		return index;
 	}
 
 	/**
@@ -454,7 +447,7 @@ public class ConfigHandler implements Comparator<Option> {
 		String output = "\n==============" + msg + "==============\n";
 		for (Iterator<String> it = config.getKeys(); it.hasNext();) {
 			String key = it.next();
-			output += key + "=[" + config.getProperty(key) + "]\n";
+			output += key + "=[" + config.getString(key) + "]\n";
 		}
 
 		output += "==============" + msg + "==============";
@@ -477,8 +470,8 @@ public class ConfigHandler implements Comparator<Option> {
 		writer.println();
 	}
 
-	final static String usageString = Executive.PROG_NAME
-			+ " <-consumer|-producer> [ -config <filename> ] [OPTIONS]";
+	final static String usageString = PROG_NAME
+			+ " <-consumer|-producer|-requestor|-responder> [ -config <filename> ] [OPTIONS]";
 
 	void usage() {
 		Options executiveOptions = instance("executive").getOptions();
@@ -496,13 +489,16 @@ public class ConfigHandler implements Comparator<Option> {
 
 		String syntaxString = usageString;
 
-		// Options executiveOptions = instance("executive").getOptions();
 		Options executiveOptions = instance("executive").getOptions();
 		Options commonOptions = instance("common").getOptions();
 		Options producerSpecificOptions = instance("producer.specific")
 				.getOptions();
 		Options consumerSpecificOptions = instance("consumer.specific")
 				.getOptions();
+//		Options requestorSpecificOptions = instance("requestor.specific")
+//				.getOptions();
+//		Options responderSpecificOptions = instance("responder.specific")
+//				.getOptions();
 
 		HelpFormatter formatter = new HelpFormatter();
 
@@ -530,14 +526,14 @@ public class ConfigHandler implements Comparator<Option> {
 
 		if (consumerSpecificOptions != null) {
 			pw.println();
-			pw.println("Consumer Options:");
+			pw.println("Consumer/Responder Options:");
 			formatter.printOptions(pw, width, consumerSpecificOptions, leftPad,
 					descPad - 9);
 		}
 
 		if (producerSpecificOptions != null) {
 			pw.println();
-			pw.println("Producer Options:");
+			pw.println("Producer/Requestor Options:");
 			formatter.printOptions(pw, width, producerSpecificOptions, leftPad,
 					descPad - 10);
 		}
@@ -584,9 +580,34 @@ public class ConfigHandler implements Comparator<Option> {
 				String destType=option.getOpt();
 				String destName=line.getOptionValue(destType);
 				logger.debug("Setting destination type = " + destType);
-				instanceConfig.setProperty(JMSClient.PROP_DESTINATION_TYPE, destType);
+				instanceConfig.setProperty(Constants.PROP_DESTINATION_TYPE, destType);
 				logger.debug("Setting destination name = " + destName);
-				instanceConfig.setProperty(JMSClient.PROP_DESTINATION_NAME, destName);
+				instanceConfig.setProperty(Constants.PROP_DESTINATION_NAME, destName);
+				break;
+			case OPT_PROVIDER:
+				Provider prov = null;
+				String name = line.getOptionValue(option.getOpt()).toUpperCase();
+				ArrayList<String> providerNames = new ArrayList<String>();
+				for (Provider p : Provider.values())
+					providerNames.add(p.name());
+				if (providerNames.contains(name))
+				{
+					prov = Provider.valueOf(name);
+					instanceConfig.setProperty(Constants.PROP_PROVIDER_NAME, prov.name());
+					String currURL = instanceConfig.getString(Constants.PROP_PROVIDER_URL, null);
+					if (currURL==null)
+						instanceConfig.setProperty(Constants.PROP_PROVIDER_URL, prov.url());
+					String currFactory = instanceConfig.getString(Constants.PROP_PROVIDER_CONTEXT_FACTORY, null);
+					if (currFactory==null)
+						instanceConfig.setProperty(Constants.PROP_PROVIDER_CONTEXT_FACTORY, prov.factory());
+				}
+				else
+				{
+					System.err.println(providerNames.toString() + " does not contain " + name);
+					String msg = 
+							PROG_NAME+": "+OPT_PROVIDER+" must be one of: " + providerNames.toString();
+					throw new IllegalArgumentException(msg); 
+				}
 				break;
 			default:
 				String key = this.getPropertyName(option);
@@ -598,12 +619,202 @@ public class ConfigHandler implements Comparator<Option> {
 				break;
 			}
 		}
-		// Override with values from the command line
-//		config = updateInstanceConfig(line);
+		if (instName.equals(KEY_PRODUCER))
+		{
+			if (instanceConfig.getInt(Constants.PROP_DURATION_SECONDS)==0 
+					&& instanceConfig.getInt(Constants.PROP_MESSAGE_COUNT)==0)
+			{
+				throw new ParseException(
+						PROG_NAME + ": must specify either a duration or a message count");
+			}
+		}
+
 		listConfig("parseClientConfiguration is returning this: ", instanceConfig);
 		return this.instanceConfig;
 	}
+	
+	Client.Builder getCommonElements(Client.Builder builder)
+	{
+		
+		String key = PROP_DEBUG;
+		if (instanceConfig.containsKey(key)) builder.debug(instanceConfig.getBoolean(key));
 
+		key = PROP_PROVIDER_NAME;
+		if (instanceConfig.containsKey(key)) 
+		{
+			String name = instanceConfig.getString(key);
+			if (name != null)
+				builder.provider(Provider.valueOf(name.toUpperCase()));
+		}
+
+		key = PROP_PROVIDER_URL;
+		if(instanceConfig.containsKey(key)) builder.brokerURL(instanceConfig.getString(key));
+		
+		key = PROP_PROVIDER_CONTEXT_FACTORY;
+		if(instanceConfig.containsKey(key)) builder.contextFactory(instanceConfig.getString(key));
+		
+		key = PROP_PROVIDER_CONNECTION_FACTORY;
+		if (instanceConfig.containsKey(key)) builder.connectionFactory(instanceConfig.getString(key));
+		
+		key = PROP_PROVIDER_USERNAME;
+		if (instanceConfig.containsKey(key))
+			builder.username(instanceConfig.getString(key));
+		
+		key = PROP_PROVIDER_PASSWORD;
+		if (instanceConfig.containsKey(key))
+			builder.password(instanceConfig.getString(key));
+		
+		key = PROP_CLIENT_CONNECTIONS;
+		if (instanceConfig.containsKey(key))
+			builder.connections(instanceConfig.getInt(key));
+		
+		key = PROP_CLIENT_SESSIONS;
+		if (instanceConfig.containsKey(key))
+			builder.connections(instanceConfig.getInt(key));
+		
+		key = PROP_UNIQUE_DESTINATIONS;
+		if (instanceConfig.containsKey(key))
+				builder.uniqueDests(instanceConfig.getBoolean(key));
+		
+		key = PROP_MESSAGE_COUNT;
+		if(instanceConfig.containsKey(key))
+			builder.messages(instanceConfig.getInt(key));
+		
+		key = PROP_DURATION_SECONDS;
+		if (instanceConfig.containsKey(key))
+			builder.duration(instanceConfig.getInt(key));
+		
+		DestType destType = null;
+		key = PROP_DESTINATION_TYPE;
+		if (instanceConfig.containsKey(key))
+		{
+			String typeString = instanceConfig.getString(key);
+			destType = DestType.valueOf(typeString);
+			builder.destType(destType);
+		}
+
+		String typeFormat = null;
+		switch (destType)
+		{
+		case QUEUE:
+			typeFormat = instanceConfig.getString(PROP_PROVIDER_QUEUE_FORMAT, 
+					PROP_PROVIDER_QUEUE_FORMAT_DEFAULT);
+			break;
+		case TOPIC:
+		default:
+			typeFormat = instanceConfig.getString(PROP_PROVIDER_TOPIC_FORMAT, 
+					PROP_PROVIDER_TOPIC_FORMAT_DEFAULT);
+			break;
+		}
+
+		key = PROP_DESTINATION_NAME;
+		if (instanceConfig.containsKey(key))
+		{
+			String rawName = instanceConfig.getString(key);
+			String name = String.format(typeFormat, rawName);
+			builder.destination(name);
+		}
+		
+		key = PROP_TRANSACTION_XA;
+		if (instanceConfig.containsKey(key))
+			builder.xa(instanceConfig.getBoolean(key));
+
+		key = PROP_TRANSACTION_SIZE;
+		if (instanceConfig.containsKey(key))
+			builder.transactionSize(instanceConfig.getInt(key));
+		
+		key = PROP_REPORT_INTERVAL_SECONDS;
+		if (instanceConfig.containsKey(key))
+			builder.reportInterval(instanceConfig.getInt(key));
+		
+		key = PROP_REPORT_WARMUP_SECONDS;
+		if (instanceConfig.containsKey(key))
+			builder.warmup(instanceConfig.getInt(key));
+		
+		key = PROP_REPORT_OFFSET_MSEC;
+		if (instanceConfig.containsKey(key))
+			builder.offset(instanceConfig.getInt(key));
+		
+		return builder;
+	}
+	
+	Consumer getConsumer()
+	{
+		Consumer.Builder builder = new Consumer.Builder();
+		
+		builder = (Consumer.Builder)getCommonElements(builder);
+		
+		String key = PROP_CONSUMER_SELECTOR;
+		if (instanceConfig.containsKey(key)) builder.selector(instanceConfig.getString(key));
+		
+		key = PROP_CONSUMER_DURABLE;
+		if (instanceConfig.containsKey(key)) builder.durable(instanceConfig.getString(key));
+
+		key = Constants.PROP_CONSUMER_ACK_MODE;
+		if (instanceConfig.containsKey(key))
+		{
+			String modeName = instanceConfig.getString(key);
+			if (modeName!=null)
+				builder.ackMode(AckMode.valueOf(modeName.toUpperCase()));
+		}
+		return builder.build();
+	}
+	
+	AbstractProducer getProducer()
+	{
+		Producer.Builder builder = new Producer.Builder();
+
+		String key = PROP_PRODUCER_PAYLOAD_FILENAME;
+		if (instanceConfig.containsKey(key))
+			builder.payloadFileName(instanceConfig.getString(key));
+
+		key = PROP_PRODUCER_COMPRESSION;
+		if (instanceConfig.containsKey(key))
+			builder.compression(instanceConfig.getBoolean(key));
+
+		key = PROP_PRODUCER_RATE;
+		if (instanceConfig.containsKey(key))
+			builder.rate(instanceConfig.getInt(key));
+
+		key = PROP_PRODUCER_PAYLOAD_SIZE;
+		if (instanceConfig.containsKey(key))
+		{
+			String sizeString = instanceConfig.getString(key);
+			if (sizeString!=null)
+				builder.payloadSize(toBytes(sizeString));			
+		}
+		key = PROP_PRODUCER_PAYLOAD_MINSIZE;
+		if (instanceConfig.containsKey(key))
+		{
+			String sizeString = instanceConfig.getString(key);
+			if (sizeString!=null)
+				builder.payloadMinSize(toBytes(sizeString));			
+		}
+		key = PROP_PRODUCER_PAYLOAD_MAXSIZE;
+		if (instanceConfig.containsKey(key))
+		{
+			String sizeString = instanceConfig.getString(key);
+			if (sizeString!=null)
+				builder.payloadMaxSize(toBytes(sizeString));			
+		}
+		builder.randomPayloadSize(builder.payloadMinSize < builder.payloadMaxSize);
+
+		key = PROP_PRODUCER_DELIVERY_MODE;
+		if (instanceConfig.containsKey(key))
+		{
+			String modeString = instanceConfig.getString(key);
+			if (modeString != null)
+				builder.delivery(DeliveryMode.valueOf(modeString.toUpperCase()));
+		}
+		
+		key = PROP_PRODUCER_TIMESTAMP;
+		if (instanceConfig.containsKey(key))
+		{
+			builder.timestamp(instanceConfig.getBoolean(key));
+		}
+		return builder.build();
+	}
+	
 	public static String[] removeElementsMatching(String[] input, String pattern) {
 	    String[] result = null;
 	    List<String> resultList = new LinkedList<String>();
@@ -626,11 +837,35 @@ public class ConfigHandler implements Comparator<Option> {
 		String msg = new String();
 		if (prefix != null)
 			msg += prefix;
-		msg += Executive.PROG_NAME;
+		msg += PROG_NAME;
 		for (String arg : args)
 			msg += " " + arg;
 		System.err.println(msg);
 	}
-
+	
+	public static int toBytes(String filesize) {
+	    int returnValue = -1;
+	    Pattern patt = Pattern.compile("([\\d.]+)([GMK]B?)", Pattern.CASE_INSENSITIVE);
+	    Matcher matcher = patt.matcher(filesize);
+	    Map<String, Integer> powerMap = new HashMap<String, Integer>();
+	    powerMap.put("GB", 3);
+	    powerMap.put("G", 3);
+	    powerMap.put("MB", 2);
+	    powerMap.put("M", 2);
+	    powerMap.put("KB", 1);
+	    powerMap.put("K", 1);
+	    if (matcher.find()) {
+	      String number = matcher.group(1);
+	      int pow = powerMap.get(matcher.group(2).toUpperCase());
+	      BigDecimal bytes = new BigDecimal(number);
+	      bytes = bytes.multiply(BigDecimal.valueOf(1024).pow(pow));
+	      returnValue = bytes.intValue();
+	    }
+	    else
+	    {
+	    	returnValue = Integer.valueOf(filesize);
+	    }
+	    return returnValue;
+	}
 
 }
