@@ -1,0 +1,17 @@
+#!/bin/sh
+
+export TARGET_DIR=target
+export PROJECT_BASE=jmsperf
+export TARGET=${TARGET_DIR}/${PROJECT_BASE}
+
+if [ ! -d $TARGET_DIR ]; then
+  exit 1
+fi
+
+rm -rf $TARGET && mkdir $TARGET
+
+if [ $? ]; then
+  tar xvzf ${TARGET}*.tar.gz --strip-components=1 -C ${TARGET}
+fi
+
+exit $?

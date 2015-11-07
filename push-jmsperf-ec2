@@ -1,0 +1,17 @@
+#!/bin/sh
+
+export TARGET_DIR=target
+export PROJECT_BASE=jmsperf
+export TARGET=${TARGET_DIR}/${PROJECT_BASE}
+
+if [ ! -d $TARGET ]; then
+  echo "ERROR: $TARGET does not exist!!"
+fi
+
+USER=ec2-user
+MACHINES="54.201.12.172 54.187.87.78"
+
+for machine in $MACHINES
+do
+	/Users/larry/bin/push $TARGET  ${USER}@${machine}:.
+done
